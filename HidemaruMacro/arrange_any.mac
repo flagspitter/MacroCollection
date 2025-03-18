@@ -1,0 +1,79 @@
+// 文字位置の整理
+// 
+// 複数行を範囲選択して実行すると、
+// 実行した時点でカーソル位置にあった単語の位置をあわせます。
+// 対象の単語が存在しない行は無視します。
+// 選択した範囲は、全て同一のインデントである必要があります。
+
+// (例)
+// $$searchBuf = searchbuffer;
+// ##searchOpt = searchoption;
+// ##orgX = x;
+// ##orgY = y;
+//  ↓
+// $$searchBuf = searchbuffer;
+// ##searchOpt = searchoption;
+// ##orgX      = x;
+// ##orgY      = y;
+
+setcompatiblemode 0x020c;
+begingroupundo;
+disabledraw;
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+
+if( rectselecting )
+{
+	; // error
+}
+else if( selecting )
+{
+	##topY = seltoplineno;
+	##bottomY = selendlineno;
+	if( selendcolumn != 0 )
+	{
+		##bottomY = ##bottomY + 1;
+	}
+	
+	escape;
+	selectword;
+	$$str = gettext( seltopx, seltopy, selendx, selendy );
+	
+	// 最大桁数を得る
+	##max = 0;
+	moveto2 0, ##topY;
+	searchdown2 $$str, nocasesense, word;
+	while( ( result == true ) && ( lineno < ##bottomY ) && ( code != eof ) )
+	{
+		escape;
+		if( column >= ##max )
+		{
+			##max = column;
+		}
+		golineend2;
+		finddown;
+	}
+	
+	// 空白を敷き詰める
+	moveto2 0, ##topY;
+	finddown2;
+	while( ( result == true ) && ( lineno < ##bottomY ) && ( code != eof ) )
+	{
+		escape;
+		while( column < ##max )
+		{
+			insert " ";
+		}
+		golineend2;
+		finddown;
+	}
+	escape;
+}
+
+moveto ##orgX, ##orgY;
+enabledraw;
+setsearch $$searchBuf, ##searchOpt;
+endgroupundo;
+

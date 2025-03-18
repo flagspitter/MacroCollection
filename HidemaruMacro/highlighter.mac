@@ -1,0 +1,247 @@
+//  多機能蛍光ペン highlighter_quick.mac
+//  選択範囲や同じ単語に、一時的に色をつけます
+
+// とりあえず使う場合、次のキーにこのマクロを割り当ててください。
+//  ・Ctrl +       テンキーの0～7
+//  ・Ctrl + Alt + テンキーの0～7
+//
+// ※別なキーに割り当てたい場合、「カスタマイズ用」にある
+// ##num0 ～ ##num7 を変更します。
+// 
+// 挙動：
+//  ・選択中の場合、その範囲が対象
+//    未選択状態なら、カーソル位置の単語が対象
+//  
+//  ・Ctrl +           テンキー   対象に色づけ
+//  ・Ctrl + Alt +     テンキー   テキスト中の、対象と同一単語に対して色づけ
+//  ・Ctrl + Windows + テンキー   テキスト中の「最後に検索した結果」に色づけ
+//                                (→正規表現や単語検索等の結果も反映される)
+//
+//  ・Ctrl + Alt + Wnd + テンキーの0    テキスト中の全ての色づけを解除
+
+// メモ：
+//   iskeydown(n)
+//   Num0～ ... 96～
+//   Shift  ... 0x10
+//   Ctrl   ... 0x11
+//   Alt    ... 0x12
+//   Windows .. 91
+
+//////////////////////////////////////////////////////////////////////////////
+// カスタマイズ用
+//////////////////////////////////////////////////////////////////////////////
+setcompatiblemode 0x2020F; // 部分編集等を維持、検索結果を選択
+#type = 0; // 編集時・・・ 0:維持 1:分裂 2:消去
+
+// 同時押し用のキー割当を変えたい場合、ここを変更
+##allWord    = iskeydown( 0x12 ); // 全ての同じ単語 (+Alt)
+##lastSearch = iskeydown( 91 );   // 最後の検索結果 (+Windows-key)
+##esc        = iskeydown( 0x1b );
+
+// キーの割当先を変えたい場合、ここを変更
+// デフォルトでは、テンキーの 0～7 となっています
+##num0  = iskeydown(  96 );
+##num1  = iskeydown(  97 );
+##num2  = iskeydown(  98 );
+##num3  = iskeydown(  99 );
+##num4  = iskeydown( 100 );
+##num5  = iskeydown( 101 );
+##num6  = iskeydown( 102 );
+##num7  = iskeydown( 103 );
+##numDot= iskeydown( 110 );
+
+// 色を変えたい場合、ここを変更
+##backCol = 0;
+##backCol = ##backCol | (##num1 * 0xa00000);
+##backCol = ##backCol | (##num2 * 0x000080);
+##backCol = ##backCol | (##num3 * 0x700050);
+##backCol = ##backCol | (##num4 * 0x008000);
+##backCol = ##backCol | (##num5 * 0x805000);
+##backCol = ##backCol | (##num6 * 0x007090);
+##backCol = ##backCol | (##num7 * 0x666666);
+
+$$iniFile = currentmacrodirectory + "\\highlighter.ini";
+#userData = getininum( $$iniFile, "general", "key" );
+
+//////////////////////////////////////////////////////////////////////////////
+// 下準備
+//////////////////////////////////////////////////////////////////////////////
+disabledraw;
+
+##orgX = x;
+##orgY = y;
+
+if( ##numDot == 0 )
+{
+	##chCol = -1;
+}
+else if( ##esc != 0 )
+{
+	##chCol = 0;
+}
+else
+{
+	##chCol = 0x666666;
+}
+
+if( ##esc != 0 )
+{
+	##disable = 0;
+}
+else if( ( ##backCol == 0 ) && ( ##numDot == 0 ) )
+{
+	##disable = 1;
+}
+else
+{
+	##disable = 0;
+}
+
+// 範囲選択されていない場合は、カーソル位置の単語単体
+if( !selecting )
+{
+	selectword;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// 本処理
+//////////////////////////////////////////////////////////////////////////////
+if( rectselecting )
+{
+	// 矩形範囲選択中である場合、その範囲
+	call ColorBox ##chCol, ##backCol, ##disable;
+}
+else if( ##allWord && ##lastSearch && ( ##disable != 0 ) )
+{
+	// Ctrl + Wnd + Alt + Num0で全消去
+	selectall;
+	colormarker;
+	title 0, 1;
+}
+else if( ##allWord || ##lastSearch )
+{
+	// 選択中単語と同じ単語全てを対象
+	call ColorAllWord ##chCol, ##backCol, ##disable, ##lastSearch;
+}
+else
+{
+	// 選択中範囲のみ
+	if( ##disable == 0 )
+	{
+		colormarker ##chCol, ##backCol, 11, #type, #userData;
+	}
+	else
+	{
+		colormarker;
+	}
+	escape;
+	enabledraw;
+	redraw;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// 後始末
+//////////////////////////////////////////////////////////////////////////////
+escape;
+moveto ##orgX, ##orgY;
+enabledraw;
+redraw;
+
+endmacro;
+// main ここまで
+////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////
+// 矩形範囲
+// void ColorBox( int chCol, int backCol, int flagDisable )
+ColorBox:
+{
+	##chCol   = ##1;
+	##backCol = ##2;
+	##flagDisable = ##3;
+	
+	##x0 = seltopx;
+	##y0 = seltopy;
+	##x1 = selendx;
+	##y1 = selendy;
+	##i = seltopy;
+	
+	// １行ずつ処理
+	while( ##i <= ##y1 )
+	{
+		escape;
+		moveto ##x0, ##i;
+		beginsel;
+		moveto ##x1, ##i;
+		
+		if( ##flagDisable == 0 )
+		{
+			colormarker ##chCol, ##backCol, 11, #type, #userData;
+		}
+		else
+		{
+			colormarker;
+		}
+		
+		##i = ##i + 1;
+	}
+	return;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// 検索して同じ単語を対象
+// void ColorBox( int chCol, int backCol, int flagDisable, int lastSearch )
+ColorAllWord:
+{
+	##chCol   = ##1;
+	##backCol = ##2;
+	##flagDisable = ##3;
+	##lastSearch  = ##4;
+	
+	// 検索文字列等の退避
+	$$searchBuf = searchbuffer;
+	##searchOpt = searchoption;
+	
+	escape;
+	gofiletop;
+	
+	if( ##lastSearch )
+	{
+		// 前回の検索結果を使用
+		finddown2;
+	}
+	else
+	{
+		// 選択範囲から取得
+		$$str = gettext( seltopx, seltopy, selendx, selendy );
+		searchdown2 $$str, word;
+	}
+	
+	// 見つかる限り色付けor色消し
+	##i = 0;
+	##j = 0;
+	while( result == true )
+	{
+		##j = ##j + selendcolumn - seltopcolumn;
+		##i = ##i + 1;
+		if( ##flagDisable == 0 )
+		{
+			colormarker ##chCol, ##backCol, 11, #type, #userData;
+		}
+		else
+		{
+			colormarker;
+		}
+		finddown2;
+	}
+	
+	$$tmp = " [ Hilight ... " + str(##i) + " hit (" + str(##j) + " byte)]";
+	title $$tmp, 1;
+	title -1, 1;
+	
+	// 検索文字列等の復帰
+	setsearch $$searchBuf, ##searchOpt;
+	
+	return;
+}

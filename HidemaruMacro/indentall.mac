@@ -1,0 +1,208 @@
+setcompatiblemode 0x20200;
+
+// 開発用テンポラリなど
+
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+
+if( ( filetype == ".c" ) || ( filetype == ".h" ) || ( filetype == ".cpp" ) )
+{
+	$$openStr  = "{|#if|#else|#elif";
+	$$closeStr = "}|#else|#endif|#elif";
+	$$tmpStr   = "case|default:";
+}
+
+if( ( filetype == ".bas" ) || ( filetype == ".frm" ) || ( filetype == ".dsr" ) )
+{
+	$$openStr  = "^[ \t]*(If.+?Then|While|Begin|For.+?To|With|Select|Do)|((Private|Public).+?(Function|Sub|Procedure|Type))";
+	$$closeStr = "^[ \t]*(End|Wend|Next|Loop)";
+	$$tmpStr   = "ElseIf|Else|^[ \t].*Case|^[ \t]*[a-zA-Z0-9_]+?:";
+	
+	// 複数行を連結
+	replaceallfast "_\\n", "\\\\_\\\\" , regular;
+}
+
+call IndentAll $$openStr, $$closeStr, $$tmpStr;
+
+if( ( filetype == ".bas" ) || ( filetype == ".frm" ) )
+{
+	call PostProcess4Basic;
+}
+
+moveto ##orgX, ##orgY;
+enabledraw;
+setsearch $$searchBuf, ##searchOpt;
+endgroupundo;
+endmacro;
+
+IndentAll:
+{
+	// パラメータを確認
+	if( ($$1 == "") || ($$2 == "") )
+	{
+		return 0;
+	}
+	
+	$$openStr  = $$1;
+	$$closeStr = $$2;
+	$$tmpStr   = $$3;
+	
+	// 一度、全てのインデントを消去
+	$$tmp = "Reindent : 準備しています";
+	title $$tmp, 1;
+	replaceallfast "^(\\t| )+", "" , regular;
+	gofiletop;
+	
+	// 再インデント処理
+	##curIndent = 0;
+	while( lineno < linecount2 )
+	{
+		$$tmp = "Reindent : " + str(lineno) + " / " + str(linecount2);
+		title $$tmp, 1;
+		
+		// 現在の行を再インデント
+		golinetop;
+		##i = 0;
+		while( ##i < ##curIndent )
+		{
+			insert "\t";
+			##i = ##i + 1;
+		}
+		
+		// 対象文字列の有無を判定
+		##posOpen  = 0;
+		##posClose = 0;
+		##posTmp   = 0;
+		selectline;
+		searchdown2 $$openStr,    word, maskcomment, maskifdef, inselect, nohilight, regular;
+		if( result == false )
+		{
+			##posOpen = -1;
+		}
+		
+		selectline;
+		searchdown2 $$closeStr,   word, maskcomment, maskifdef, inselect, nohilight, regular;
+		if( result == false )
+		{
+			##posClose = -1;
+		}
+		
+		if( $$tmpStr != "" )
+		{
+			selectline;
+			searchdown2 $$tmpStr, word, maskcomment, maskifdef, inselect, nohilight, regular;
+			if( result == false )
+			{
+				##posTmp = -1;
+			}
+		}
+		
+		// 検出状態の解析
+		if( (##posOpen != -1) && (##posClose != -1) )
+		{
+			; // １行で完結している
+		}
+		else if( ##posOpen != -1 )
+		{
+			// 開いている
+			##curIndent = ##curIndent + 1;
+		}
+		else if( ##posClose != -1 )
+		{
+			// 閉じている
+			##curIndent = ##curIndent - 1;
+			
+			golinetop;
+			if( code == '\t' )
+			{
+				delete;
+			}
+			
+			if( ##curIndent < 0 )
+			{
+				// 対応しない閉じタグを検出 -> -1 を返す
+				##curIndent = 0;
+			}
+		}
+		else if( ##posTmp != -1 )
+		{
+			golinetop;
+			if( code == '\t' )
+			{
+				delete;
+			}
+		}
+		else
+		{
+			; // タグがない行
+		}
+		
+		golineend;
+		right;
+	}
+	
+	escape;
+	return;
+}
+
+PostProcess4Basic:
+{
+	// 連結した行を戻す
+	replaceallfast "\\\\_\\\\", "_\\n" , regular;
+	
+	gofiletop;
+	searchdown2 "_$", regular;
+	
+	while( result != false )
+	{
+		$$topTabs = "";
+		golinetop;
+		if( code == '\t' )
+		{
+			selectword;
+			$$topTabs = gettext( seltopx, seltopy, selendx, selendy );
+			moveto2 0, lineno + 1;
+			
+			golineend2;
+			left;
+			while( code == '_' )
+			{
+				golinetop2;
+				if( ( code == '\t' ) || ( code == ' ' ) )
+				{
+					selectword;
+					delete;
+				}
+				insert $$topTabs;
+				insert "\t";
+				
+				moveto2 0, lineno + 1;
+				golineend2;
+				left;
+			}
+		}
+		
+		golinetop2;
+		if( ( code == '\t' ) || ( code == ' ' ) )
+		{
+			selectword;
+			delete;
+		}
+		
+		selectword;
+		$$tmp = gettext( seltopx, seltopy, selendx, selendy );
+		if( $$tmp != "Then" )
+		{
+			insert "\t";
+		}
+		insert $$topTabs;
+		
+		finddown;
+	}
+	
+	return;
+}

@@ -1,0 +1,5 @@
+if( selecting )
+{
+	$tmp = gettext( seltopx, seltopy, selendx, selendy, 0 );
+	searchdown $tmp, nocasesense, hilight;
+}

@@ -1,0 +1,69 @@
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// 直上の行のインデント深さを調べる
+if( y > 0 )
+{
+	moveto2 0, y-1;
+}
+
+if( ( code == ' ' ) || ( code == '\t' ) )
+{
+	selectword;
+	$$indentStr = gettext( seltopx, seltopy, selendx, selendy );
+}
+
+moveto ##orgX, ##orgY;
+
+// 貼り付ける文字列から、インデント部分を取り除く
+beginclipboardread;
+
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+endmacro;
+////////////////////////////////////////
+
+GetClipboard2:
+$$line="";
+	while( 1 )
+	{
+		$$add = getclipboard;
+		if( $$add=="" )
+		{
+			break;
+		}
+		$$line = $$line + $$add;
+		if( strstr( $$add, "\x0a" ) >= 0 )
+		{
+			break;
+		}
+	}
+	return $$line;
+

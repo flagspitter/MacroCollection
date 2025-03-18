@@ -1,0 +1,90 @@
+// 変数の(システム)ハンガリアンの部分を薄くして、
+// コードの見通しを一時的に高めます。
+// ハンガリアンの定義は、$$hungarian に追加することが出来ます。
+// (1) トークンのはじめの文字列が、$$hungarian に合致していて
+// (2) 続く文字が大文字またはアンダースコアに当たる
+// 以上の条件で判定します。
+
+// Windows key
+##wnd   = iskeydown( 91 );   // Hold searching word.
+
+// 文字色定義
+// ##charColor = -1;        // 透過
+##charColor = 0x404060;  // 文字色(-1で透過) 黒背景用
+// ##charColor = 0xe8c0c0;  // 文字色(-1で透過) 白背景用
+// ##charColor = 0;         // 文字色(-1で透過) 完全に消す
+
+// 背景色定義
+##backColor = -1;        // 透過
+
+// スタイル定義
+##style     = 11;        // 透過
+// ##style     = 1;         // ボールド
+// ##style     = 2;         // 下線
+// ##style     = 4;         // イタリック
+// ##style     = 8;         // 中抜き
+// ##style     = 9;         // 極太
+// ##style     = 10;        // 影付き
+
+// ハンガリアン定義
+$$hungarian = 
+	// for Windows SDK
+	"([m]_)?l?p(w)?(sz|fn)?" + "|" +
+	"([m]_)?cb"    + "|" +
+	"([m]_)?hbr"   + "|" +
+	"([m]_)?dw"    + "|" +
+	"([m]_)?sz"    + "|" +
+	"([m]_)?pa"    + "|" +
+	
+	// for MMAC
+	"g?s_p?st"    + "|" +
+	"g?s_p?u[lc]" + "|" +
+	"g?s_p?h"     + "|" +
+	"p?u[lcn]"    + "|" +
+	"s_e"         + "|" +
+	"g?s"         + "|" +
+	"g_[ap]*(l|ul|uc|st)" + "|" +
+	"[io]_(n|l?p|l?psz)"  + "|" +
+	
+	// for OMX and IMMC
+	"[agp]*[us](32|16|8)" + "|" +
+	"[agp]*u?[wh][ap]?"   + "|" +
+	"[agp]*t[ap]?"        + "|" +
+	"[agp]*(ul|sl|st|fn)" + "|" +
+	"[agp]+_?"            + "|" +
+	"[agp]*[fvscxgebhnlm]_?";
+
+// 前準備
+setcompatiblemode 0x020c;
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+disabledraw;
+escape;
+
+gofiletop;
+
+// 処理本体
+##i = 0;
+##j = 0;
+searchdown2 "(?\\1)[^A-Za-z0-9_](" + $$hungarian + ")[A-Z0-9_]", regular, maskstring, maskcomment, maskifdef, nohilight;
+while( result == true )
+{
+	##i = ##i + 1;
+	##j = ##j + selendcolumn - seltopcolumn;
+	colormarker ##charColor, ##backColor, ##style, 1, 1;
+	finddown2;
+}
+
+$$tmp = " [ hide_hungarian ... " + str(##i) + " hit (" + str(##j) + "byte, " + str( ##j * 100 / charcount(0x00222202) ) + "% ) ]";
+title $$tmp, 1;
+title -1, 1;
+
+// 後始末
+moveto ##orgX, ##orgY;
+enabledraw;
+if( ##wnd == 0 )
+{
+	setsearch $$searchBuf, ##searchOpt;
+}

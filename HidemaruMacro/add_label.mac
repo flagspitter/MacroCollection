@@ -1,0 +1,36 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+$$iniFile = currentmacrodirectory + "\\label.ini";
+
+// TODO ‚±‚±‚É‹Lq
+
+
+##dllID = loaddll( macrodir + "\\idemaru.dll" );
+if( !result )
+{
+	message "failed.";
+}
+else
+{
+	if( selecting )
+	{
+		$$tmp = gettext( seltopx, seltopy, selendx, selendy, 1 );
+		$$str = input( "’Ç‰Á‚·‚é•¶Í‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢", $$tmp );
+	}
+	else
+	{
+		$$str = input( "’Ç‰Á‚·‚é•¶Í‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚¢" );
+	}
+	
+	if( $$str != "" )
+	{
+		writeinistr $$iniFile, filename2, str(##num), $$str;
+	}
+}

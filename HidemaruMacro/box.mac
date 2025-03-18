@@ -1,0 +1,31 @@
+if( (rectselecting == 0) && (selecting == 1) )
+{
+	// 通常選択中 -> BOX選択に変換
+	#start_x = seltopx;
+	#start_y = seltopy;
+	#end_x   = selendx;
+	#end_y   = selendy;
+	
+	escape;
+	moveto #start_x, #start_y;
+	beginrect;
+	moveto #end_x, #end_y;
+}
+else if( (rectselecting == 1) && (selecting == 1) )
+{
+	// BOX選択中 -> 通常選択に変換
+	#start_x = seltopx;
+	#start_y = seltopy;
+	#end_x   = selendx;
+	#end_y   = selendy;
+	
+	escape;
+	moveto #start_x, #start_y;
+	beginsel;
+	moveto #end_x, #end_y;
+}
+else
+{
+	// 非選択中 -> BOX選択開始
+	beginrect;
+}

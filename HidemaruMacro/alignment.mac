@@ -1,0 +1,144 @@
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// 左側にスペースを挿入して位置調整
+// ( ) // /*
+// , の後、' ' が続いた後の ' ' でない文字
+
+if( selecting )
+{
+	// 処理範囲は選択された範囲
+	##top     = seltoplineno;
+	##bottom  = selendlineno;
+	
+	if( selendcolumn == 0 )
+	{
+		##bottom = ##bottom - 1;
+	}
+	##linenum = ##bottom - ##top + 1;
+	
+	// インデントの文字列を保存しておく
+	// →全スペース類の連続は、一時削除するため
+	movetolineno 0, ##top;
+	selectword;
+	$$indentcode = gettext( seltopx, seltopy, selendx, selendy );
+	
+	// 範囲内の全スペース類を一旦削除する
+	movetolineno 0, ##top;
+	beginsel;
+	movetolineno 0, ##bottom;
+	golineend;
+	rangeeditin;
+	replaceallfast "[ \t]+", "", regular, masknormal, maskonly;
+	rangeeditout;
+	
+	// 行ごとに「キー」となる文字(列)を検索
+	##curLine = 0;
+	##keyNum = 0;
+	while( ##curLine < ##linenum )
+	{
+		movetolineno 0, ##curLine;
+		selectline;
+		rangeeditin;
+		
+		##curKey = 0;
+		searchdown "\\(|\\)|,([ \\t]*)[^,](?\\1)|//*|/\\*", regular;
+		while( result != false )
+		{
+			// キーの位置をメモっておく
+			#codeList[ ##curLine ][ ##curKey ] = code;
+			
+			right;
+			#pos[ ##curLine ][ ##curKey ] = column;
+			##curKey = ##curKey + 1;
+			finddown;
+		}
+		
+		if( ##curKey > ##keyNum )
+		{
+			##keyNum = ##curKey;
+		}
+		
+		rangeeditout;
+		##curLine = ##curLine + 1;
+	}
+	
+	// キーごとに、スペースの挿入数を決める
+	##curKey = 0;
+	while( ##curKey < ##keyNum )
+	{
+		call max ##curKey, ##keyNum, ##linenum;
+		
+		##curLine = 0;
+		while( ##curLine < ##linenum )
+		{
+			##curLine = ##curLine + 1;
+		}
+		##curKey = ##curKey + 1;
+	}
+	
+	// 再度インデントを行う
+	##i = ##top;
+	while( ##i < ##bottom + 1 )
+	{
+		movetolineno 0, ##i;
+		insert $$indentcode;
+		##i = ##i + 1;
+	}
+}
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY + 1;
+enabledraw;
+
+endgroupundo;
+endmacro;
+
+max:
+	##keyIdx  = ##1;
+	##keyMax  = ##2;
+	##lineMax = ##3;
+	
+	##keyPosMax = 0;
+	##i = 0;
+	while( ##i < ##lineMax )
+	{
+		if( #pos[ ##i ][ ##keyIdx ] + #addition[ ##i ] > ##keyPosMax )
+		{
+			##keyPosMax = #pos[ ##i ][ ##keyIdx ];
+		}
+		
+		##i = ##i + 1;
+	}
+	##keyPosMax = ##keyPosMax + 1;
+	
+	// ##i = 0;
+	// while( ##i < ##lineMax )
+	// {
+	// 	#addition[ ##i ] = #addition[ ##i ] + 
+	// }
+	
+	return ##keyPosMax;

@@ -1,0 +1,17 @@
+setcompatiblemode 0x000c;
+disabledraw;
+if( ( rangeeditmode & 0x2 ) != 0 )
+{
+	rangeeditout;
+	nextoutlineitem;
+	##orgX = x;
+	##orgY = y;
+	execmacro "rangeedit_ex.mac";
+	moveto ##orgX, ##orgY;
+}
+else
+{
+	nextoutlineitem;
+}
+
+//enabledraw;

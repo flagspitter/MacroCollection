@@ -1,0 +1,103 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+begingroupundo;
+////////////////////////////////////////
+
+if( filetype == ".bat" )
+{
+	call exec_bat;
+}
+else
+{
+	call exec_specified;
+}
+
+////////////////////////////////////////
+// postprocess
+endgroupundo;
+endmacro;
+////////////////////////////////////////
+
+exec_bat:
+	call EncodeForCmdexe( filename );
+	$$tmp = $$return;
+	
+	runex "cmd /k " + $$tmp,
+		0,      // sync    0:async 1:sync
+		0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+		7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		7, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+		0,      // show    0:hide 1:show
+		1,      // draw    0:no draw 1:draw
+		0;      // unicode 0:ansi 1:unicode
+	
+	return;
+
+exec_specified:
+	##orgX = x;
+	##orgY = y;
+	disabledraw;
+	gofiletop;
+	
+	searchdown("(?\\1)!!run[ \t]+(.)"), regular;
+	if( result == true )
+	{
+		escape;
+		beginsel;
+		golineend2;
+		
+		$$str = gettext( seltopx, seltopy, selendx, selendy );
+	}
+	else
+	{
+		$$str = "";
+	}
+	
+	moveto ##orgX, ##orgY;
+	enabledraw;
+	
+	if( $$str != "" )
+	{
+		runex "cmd /k " + $$str,
+			1,      // sync    0:async 1:sync
+			0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+			7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region?
+			1, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace
+			0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+			0,      // show    0:hide 1:show
+			1,      // draw    0:no draw 1:draw
+			0;      // unicode 0:ansi 1:unicode
+	}
+	return;
+
+EncodeForCmdexe:
+	$$arg = $$1;
+	$$tmp = "";
+	##i = 0;
+	while( ##i < wcslen( $$arg ) )
+	{
+		$$ch = wcsmidstr( $$arg, ##i, 1 );
+		if( ( $$ch == "&" ) || 
+		    ( $$ch == "|" ) || 
+		    ( $$ch == ";" ) || 
+		    ( $$ch == "=" ) || 
+		    ( $$ch == "<" ) || 
+		    ( $$ch == ">" ) || 
+		    ( $$ch == "(" ) || 
+		    ( $$ch == ")" ) || 
+		    ( $$ch == "%" ) || 
+		    ( $$ch == "\"" ) || 
+		    ( $$ch == " " ) || 
+		    ( $$ch == "^" ) )
+		{
+			$$tmp = $$tmp + "^";
+		}
+		
+		$$tmp = $$tmp + $$ch;
+		##i = ##i + 1;
+	}
+	
+	return $$tmp;
+

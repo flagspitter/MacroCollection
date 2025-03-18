@@ -1,0 +1,54 @@
+begingroupundo;
+
+if( overwrite )
+{
+	overwriteswitch;
+	call ExecEnter;
+	overwriteswitch;
+}
+else
+{
+	call ExecEnter;
+}
+
+endgroupundo;
+endmacro;
+
+ExecEnter:
+	golineend2;
+	call CountIndent;
+	$$indent = $$return;
+	insertreturn;
+	insert "{\n";
+	insert $$indent;
+	golineend2;
+	insertreturn;
+	insert "}", 2;
+	up;
+	golineend2;
+	return;
+
+CountIndent:
+	##ox = column;
+	##oy = lineno;
+	
+	golinetop2;
+	##c = code;
+	$$ret = "";
+	if( ( ##c == ' ' ) || ( ##c == '\t' ) )
+	{
+		while( code == ##c )
+		{
+			$$ret = $$ret + char(##c);
+			right;
+		}
+		$$ret = $$ret + char(##c);
+	}
+	else
+	{
+		$$ret = "\t";
+	}
+	
+	moveto2 ##ox, ##oy;
+	
+	return $$ret;

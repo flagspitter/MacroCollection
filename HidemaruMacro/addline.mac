@@ -1,0 +1,11 @@
+golineend2;
+if( overwrite )
+{
+	overwriteswitch;
+	insertreturn;
+	overwriteswitch;
+}
+else
+{
+	insertreturn;
+}

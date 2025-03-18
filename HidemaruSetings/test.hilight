@@ -1,0 +1,7 @@
+/<Defines>
+/<DefinesInvalid>
+/"_MSC_VER"
+/<Ifvalue>
+/"(USB_USED == MMAC_TRUE)"
+/"(USED_PB_USB_READ_TASK == MMAC_TRUE)"
+/<IfvalueInvalid>

@@ -1,0 +1,16 @@
+
+if( iskeydown( 0x11 ) )
+{
+	setclipboard filename2;
+	
+	title " [ Copied file name ] " + filename2,  1;
+	title -1, 1;
+}
+else
+{
+	setclipboard basename2;
+	
+	title " [ Copied file name ] " + basename2, 1;
+	title -1, 1;
+}
+

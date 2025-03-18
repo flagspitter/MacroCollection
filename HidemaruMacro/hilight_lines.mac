@@ -1,0 +1,44 @@
+disabledraw;
+
+if( selecting )
+{
+	##top = seltoplineno;
+	##bottom = selendlineno;
+	##colCode = 0x800000;
+	
+	escape;
+	
+	
+	##i = ##top;
+	moveto2 0, ##top;
+	
+	beginsel;
+	golineend2;
+	colormarker -1, ##colCode, 11, 0, 1;
+	escape;
+	golineend2;
+	right;
+	
+	while( ##i < ##bottom )
+	{
+		if( code != '\n' )
+		{
+			moveto2 0, ##i;
+			beginsel;
+			right;
+			colormarker -1, ##colCode, 11, 0, 1;
+			escape;
+		}
+		else
+		{
+			down;
+		}
+		##i = ##i + 1;
+	}
+	beginsel;
+	golineend2;
+	colormarker -1, ##colCode, 11, 0, 1;
+	escape;
+}
+
+enabledraw;

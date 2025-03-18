@@ -1,0 +1,110 @@
+if( selecting )
+{
+	disabledraw;
+	##orgX = x;
+	##orgY = y;
+	##color = 0x8888;
+	##end = selendlineno - 1;
+	moveto 0, seltopy;
+	while( lineno < ##end )
+	{
+		while( code != 0x0d )
+		{
+			##baseX = x;
+			##baseY = y;
+			
+			##ch = code;
+			moveto2 column, lineno+1;
+			if( code == 0x0d )
+			{
+				moveto2 column, lineno-1;
+				golineend2;
+			}
+			else if( ( code == '\t' ) || ( code == ' ' ) )
+			{
+				moveto ##baseX, ##baseY;
+				right;
+			}
+			else if( ##ch != code )
+			{
+				beginsel;
+				right;
+				colormarker -1, ##color;
+				moveto2 column-1, lineno-1;
+				beginsel;
+				right;
+				colormarker -1, ##color;
+				moveto ##baseX, ##baseY;
+				right;
+			}
+			else
+			{
+				moveto ##baseX, ##baseY;
+				right;
+			}
+			// sleep 10;
+		}
+		golineend2;
+		right;
+	}
+	moveto ##orgX, ##orgY;
+	escape;
+}
+
+/*
+js
+{
+	if( selecting() )
+	{
+		disabledraw();
+		var orgX = x();
+		var orgY = y();
+		var color = 0x8888;
+		var end = selendlineno() - 1;
+		moveto( 0, seltopy() );
+		while( lineno() < end )
+		{
+			while( code() != 0x0d )
+			{
+				var baseX = x();
+				var baseY = y();
+				
+				var ch = code();
+				moveto2( column(), lineno()+1 );
+				if( code() == 0x0d )
+				{
+					moveto2( column(), lineno()-1 );
+					golineend2();
+				}
+				else if( ( code() == '\t' ) || ( code() == ' ' ) )
+				{
+					moveto( baseX, baseY );
+					right();
+				}
+				else if( ch != code() )
+				{
+					beginsel();
+					right();
+					colormarker( -1, color );
+					moveto2( column()-1, lineno()-1 );
+					beginsel();
+					right();
+					colormarker( -1, color );
+					moveto( baseX, baseY );
+					right();
+				}
+				else
+				{
+					moveto( baseX, baseY );
+					right();
+				}
+				// sleep 10;
+			}
+			golineend2();
+			right();
+		}
+		moveto( orgX, orgY );
+		escapeselect();
+	}
+}
+*/

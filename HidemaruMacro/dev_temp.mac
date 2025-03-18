@@ -1,0 +1,198 @@
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// TODO ここに記述
+// execmacro "add_label.mac";
+
+// Git を制御できないか
+if( 0 )
+{
+	$$gitExec = "\"c:\\Program Files\\Git\\bin\\git.exe\"";
+	
+	$$msg = input( "メッセージを入力してください" );
+	
+	if( $$msg != "" )
+	{
+		runex $$gitExec + " commit -a -m \"" + $$msg + "\"",
+			0,      // sync    0:async 1:sync
+			0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+			7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+			7, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+			0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+			0,      // show    0:hide 1:show
+			1,      // draw    0:no draw 1:draw
+			6;      // unicode 0:ansi 1:unicode
+	}
+}
+if( 0 )
+{
+	$$gitExec = "\"c:\\Program Files\\Git\\bin\\git.exe\"";
+	
+	runex $$gitExec + " log",
+		0,      // sync    0:async 1:sync
+		0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+		7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		7, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+		0,      // show    0:hide 1:show
+		1,      // draw    0:no draw 1:draw
+		6;      // unicode 0:ansi 1:unicode
+}
+if( 0 )
+{
+	$$gitExec = "\"c:\\Program Files\\Git\\bin\\git.exe\"";
+	
+	runex $$gitExec + " stash",
+		0,      // sync    0:async 1:sync
+		0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+		7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		7, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+		0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+		0,      // show    0:hide 1:show
+		1,      // draw    0:no draw 1:draw
+		6;      // unicode 0:ansi 1:unicode
+}
+
+if( 0 )
+{
+	localgrep "^.+$", regular,icon,nohilight;
+	config "xFontSize:1";
+}
+
+// 2015/11/05 特定用途特化・連続置換
+if( 0 )
+{
+	gofiletop;
+	replaceallfast "Alarm1Value\t=0", "Alarm1Value	=128", regular
+	replaceallfast "Alarm2Value\t=0", "Alarm2Value	=128", regular
+	replaceallfast "ComStatusValue\t=0", "ComStatusValue	=128", regular
+}
+
+// 2015/09/02 カーソル行を基準とした折り畳み
+if( 0 )
+{
+	selectfoldable;
+	rangeeditin;
+	
+	moveto ##orgX, ##orgY;
+
+}
+
+// 2013/03/21 GHS->CSP移植補助
+// カーソル行のファイルを開き、その内容に置き換える。
+// を、最終行まで繰り返す
+if( 0 )
+{
+	while( code != eof )
+	{
+		tagjump;
+		if( result == yes )
+		{
+			selectall;
+			copy;
+			backtagjump;
+			closehidemaru(1);
+			// selectline;
+			down;
+			paste;
+		}
+		else
+		{
+			down;
+		}
+	}
+}
+
+// 2013/04/05 CSP環境構築補助
+// サブプロジェクトから、特定のファイルを消去する
+if( 0 )
+{
+	while( code != eof )
+	{
+		// リスト
+		golinetop;
+		beginsel;
+		golineend;
+		$$str = gettext( seltopx, seltopy, selendx, selendy );
+		nexttab;
+		
+		// プロジェクトファイル
+		gofiletop;
+		searchdown $$str, nocasesense;
+		if( result == true )
+		{
+			searchup "<Instance";
+			golinetop;
+			beginsel;
+			searchdown "</Instance>";
+			golineend;
+			right;
+			delete;
+		}
+		
+		prevtab;
+		escape;
+		down;
+	}
+}
+
+////////////////////////////////////////
+// postprocess
+// moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+endmacro;
+////////////////////////////////////////
+
+EncodeForCmdexe:
+	$$arg = $$1;
+	$$tmp = "";
+	##i = 0;
+	while( ##i < wcslen( $$arg ) )
+	{
+		$$ch = wcsmidstr( $$arg, ##i, 1 );
+		if( ( $$ch == "&" ) || 
+		    ( $$ch == "|" ) || 
+		    ( $$ch == ";" ) || 
+		    ( $$ch == "=" ) || 
+		    ( $$ch == "<" ) || 
+		    ( $$ch == ">" ) || 
+		    ( $$ch == "(" ) || 
+		    ( $$ch == ")" ) || 
+		    ( $$ch == "%" ) || 
+		    ( $$ch == "\"" ) || 
+		    ( $$ch == " " ) || 
+		    ( $$ch == "^" ) )
+		{
+			$$tmp = $$tmp + "^";
+		}
+		
+		$$tmp = $$tmp + $$ch;
+		##i = ##i + 1;
+	}
+	
+	return $$tmp;
+

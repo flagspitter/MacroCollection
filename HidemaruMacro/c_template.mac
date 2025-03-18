@@ -1,0 +1,34 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+disabledraw;
+begingroupundo;
+
+////////
+
+gofiletop;
+
+insert "/***********************************************************************\n";
+insert "\t" + basename2 + "\n";
+insert "\t\n";
+insert "***********************************************************************/\n\n";
+
+call InsertSection "Include Files";
+call InsertSection "Definitions / Macros";
+call InsertSection "Local Types";
+call InsertSection "Global Variables";
+call InsertSection "Function Prototypes";
+call InsertSection "Static Functions";
+call InsertSection "Public Functions";
+
+////////
+
+enabledraw;
+endgroupundo;
+endmacro;
+
+InsertSection:
+	insert "//----------------------------------------------------------------------\n";
+	insert "//-- " + $$1 + "\n";
+	insert "//----------------------------------------------------------------------\n\n";
+	return;

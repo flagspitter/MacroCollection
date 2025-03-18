@@ -1,0 +1,55 @@
+// Box選択時の貼り付けの挙動を変更
+
+// Box選択時 ・・・クリップボードの１行目を各行に挿入
+// 通常選択時・・・通常の貼り付け
+
+if( rectselecting )
+{
+	// Box選択時は、クリップ内容の最初の行を挿入
+	begingroupundo;
+	disabledraw;
+	
+	// クリップボードの１行目を取得
+	beginclipboardread;
+	$str = getclipboard;
+	if( strstr( $str, "\n" ) != -1 )
+	{
+		$str = leftstr( $str, strlen($str) -1 );
+	}
+	
+	// カーソル位置情報を保存
+	##length = strlen( $str );
+	##x0 = seltopx;
+	##x1 = selendx;
+	##y0 = seltopy;
+	##y1 = selendy;
+	##i = ##y1;
+	
+	escape;
+	
+	// 各行に貼り付け
+	while( ##i >= ##y0 )
+	{
+		moveto ##x0, ##i;
+		// ただし、改行コード以降には貼り付けない
+		if( x >= ##x0 )
+		{
+			insert $str;
+		}
+		##i = ##i - 1;
+	}
+	
+	// 選択状態を復帰
+	moveto ##x0 + ##length, ##y0;
+	beginrect;
+	moveto ##x1 + ##length, ##y1;
+	
+	enabledraw;
+	endgroupundo;
+}
+else
+{
+	// Box選択時じゃない場合は、通常の貼り付け
+	paste;
+}
+

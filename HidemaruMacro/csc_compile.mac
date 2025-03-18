@@ -1,0 +1,44 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+begingroupundo;
+////////////////////////////////////////
+
+disabledraw;
+
+gofiletop;
+searchdown("(?\\1)!!compile[ \t]+(.)"), regular;
+if( result == true )
+{
+	escape;
+	beginsel;
+	golineend2;
+	
+	$$str = gettext( seltopx, seltopy, selendx, selendy );
+}
+else
+{
+	$$str = "";
+}
+
+moveto ##orgX, ##orgY;
+enabledraw;
+
+// runsync2 "cmd /k d:\\execcl.bat " + $$str + " " + filename + " > log.log";
+runex "cmd /k " + currentmacrodirectory + "\\execcsc.bat " + filename + " "  + $$str,
+	1,      // sync    0:async 1:sync
+	0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+	7, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region?
+	1, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace
+	0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+	0,      // show    0:hide 1:show
+	1,      // draw    0:no draw 1:draw
+	0;      // unicode 0:ansi 1:unicode
+
+////////////////////////////////////////
+// postprocess
+endgroupundo;
+endmacro;
+////////////////////////////////////////

@@ -1,0 +1,49 @@
+#gid = tabgroup;
+
+if( (rectselecting == 0) && (selecting == 1) )
+{
+	#start_y = seltoplineno;
+	#end_y   = selendlineno;
+	#end_x   = selendcolumn;
+	
+	movetolineno 0, #start_y;
+	#i = #start_y;
+	
+	while( #i < #end_y )
+	{
+		tagjump;
+		
+		if( result == true )
+		{
+			settabgroup 0, #gid;
+			backtagjump;
+		}
+		down;
+		#i = #i + 1;
+	}
+	if( #end_x != 0 )
+	{
+		tagjump;
+		
+		if( result == true )
+		{
+			settabgroup 0, #gid;
+			backtagjump;
+		}
+		down;
+	}
+}
+else
+{
+	tagjump;
+	
+	if( result == false )
+	{
+		beep;
+		message "ƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ";
+		endmacro;
+	}
+	
+	settabgroup 0, #gid;
+}
+

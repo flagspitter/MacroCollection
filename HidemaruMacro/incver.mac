@@ -1,0 +1,58 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+gofiletop;
+searchdown2 "$$AutoInc[ \\t]+", casesense, regular;
+
+if( result == 0 )
+{
+	$$tmp = " Ver descriptor is not defined";
+	title $$tmp, 1;
+}
+else
+{
+	right;
+	beginsel;
+	golineend;
+	endsel;
+	$$sch = gettext( seltopx, seltopy, selendx, selendy );
+	
+	escape;
+	gofiletop;
+	searchdown2 $$sch, regular;
+	
+	if( result == 0 )
+	{
+		$$tmp = " Version key is not found";
+		title $$tmp, 1;
+	}
+	else
+	{
+		right;
+		selectword;
+		##num = val( gettext( seltopx, seltopy, selendx, selendy, 1 ) );
+		delete;
+		insert( str( ##num + 1 ) );
+		
+		$$tmp = " Current Version = " + str( ##num + 1 );
+		title $$tmp, 1;
+	}
+}
+
+title -1, 1;
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+
+endmacro;
+////////////////////////////////////////

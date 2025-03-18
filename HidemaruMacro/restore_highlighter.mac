@@ -1,0 +1,52 @@
+//  蛍光ペン保存マクロ(復帰用) restore_highlighter.mac
+//  save_highlighter.mac で保存した内容を復帰する
+
+//////////////////////////////////////////////////////////////////////////////
+// 下準備
+//////////////////////////////////////////////////////////////////////////////
+setcompatiblemode 0x200;
+disabledraw;
+
+##basePosX = x;
+##basePosY = y;
+gofiletop;
+
+$$iniFile = currentmacrodirectory + "\\highlighter.ini";
+#userData = getininum( $$iniFile, "general", "key" );
+
+//////////////////////////////////////////////////////////////////////////////
+// 本処理
+//////////////////////////////////////////////////////////////////////////////
+
+##i = 0;
+while( getininum( $$iniFile, filename2, "oy" + str( ##i ) ) != 0 )
+{
+	##orgX  = getininum( $$iniFile, filename2, "ox" + str( ##i ) );
+	##orgY  = getininum( $$iniFile, filename2, "oy" + str( ##i ) );
+	##endX  = getininum( $$iniFile, filename2, "ex" + str( ##i ) );
+	##endY  = getininum( $$iniFile, filename2, "ey" + str( ##i ) );
+	##chCol = getininum( $$iniFile, filename2, "cc" + str( ##i ) );
+	##bkCol = getininum( $$iniFile, filename2, "bc" + str( ##i ) );
+	##style = getininum( $$iniFile, filename2, "st" + str( ##i ) );
+	
+	moveto2 ##orgX, ##orgY;
+	beginsel;
+	moveto2 ##endX, ##endY;
+	colormarker ##chCol, ##bkCol, ##style, 0, ##userData;
+	
+	title "loading highlighter. " + str(##i), 1;
+	
+	##i = ##i + 1;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// 後始末
+//////////////////////////////////////////////////////////////////////////////
+escape;
+moveto ##basePosX, ##basePosY;
+enabledraw;
+redraw;
+
+endmacro;
+
+

@@ -1,0 +1,113 @@
+
+if( filetype == ".gcov" )
+{
+	call color_gcov;
+}
+
+endmacro;
+
+color_gcov:
+	// gcov のログに色をつける
+	
+	////////////////////////////////////////
+	// postprocess
+	setcompatiblemode 0x020c;
+	$$searchBuf = searchbuffer;
+	##searchOpt = searchoption;
+	##orgX = x;
+	##orgY = y;
+	disabledraw;
+	begingroupundo;
+	////////////////////////////////////////
+	
+	// 通常の前置情報
+	gofiletop;
+	searchdown2 "^.+?:.+?:", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x444444;
+		finddown;
+	}
+	
+	// ソース情報
+	gofiletop;
+	searchdown2 "^.+?:.+? 0:.+", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x444444;
+		finddown;
+	}
+	
+	// 関数の入り口
+	gofiletop;
+	searchdown2 "^function.+", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x008800;
+		finddown;
+	}
+	
+	// 分岐情報
+	gofiletop;
+	searchdown2 "^branch.+", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x880000;
+		finddown;
+	}
+	
+	// 関数呼び出し
+	gofiletop;
+	searchdown2 "^call.+", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x880000;
+		finddown;
+	}
+	
+	// 未実行ステートメント
+	gofiletop;
+	searchdown2 "^.+#####:.+:.+", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x000088;
+		finddown;
+	}
+	
+	// 未実行分岐類・その１
+	gofiletop;
+	searchdown2 "^\\c.+ 0%.*", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x000088;
+		finddown;
+	}
+	
+	// 未実行分岐類・その２
+	gofiletop;
+	searchdown2 "^\\c.+never executed", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x000088;
+		finddown;
+	}
+	
+	// 未返却関数
+	gofiletop;
+	searchdown2 "^call.+returned ([1-9][0-9]%|[1-9]%)", regular;
+	while( result == true )
+	{
+		colormarker -1, 0x0000ff;
+		finddown;
+	}
+	
+	////////////////////////////////////////
+	// postprocess
+	moveto ##orgX, ##orgY;
+	enabledraw;
+	setsearch $$searchBuf, ##searchOpt;
+	////////////////////////////////////////
+	
+	endgroupundo;
+	
+	return;

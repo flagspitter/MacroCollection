@@ -1,0 +1,140 @@
+
+#org_x = column + 1;
+#org_y = lineno;
+
+escape;
+#point = 1;
+
+#startcode = code;
+
+
+disabledraw;
+
+//
+// 開始位置→外郭の ( に移動
+//
+	while( #point > 0 )
+	{
+		left;
+		
+		#ccode = colorcode & 0x0000001f;
+		if( (#ccode != 3) && (#ccode != 20) )
+		{
+			if( code == '(' )
+			{
+				#point = #point - 1;
+			}
+			if( code == ')' )
+			{
+				#point = #point + 1;
+			}
+			
+			if( (code == '}') ||( code == '{') || (code == ';') )
+			{
+				movetolineno #org_x, #org_y;
+				call selcurrent;
+				endmacro;
+			}
+			
+			if( column==0 && lineno==1 )
+			{
+				movetolineno #org_x, #org_y;
+				call selcurrent;
+				endmacro;
+			}
+		}
+	}
+
+//
+// ( → 対応する ) に移動
+//
+	#point = 1;
+	
+	#startsel_x = column + 1;
+	#startsel_y = lineno;
+	
+	while( #point > 0 )
+	{
+		right;
+		
+		#ccode = colorcode & 0x0000001f;
+		if( (#ccode != 3) && (#ccode != 20) )
+		{
+			if( code == '(' )
+			{
+				#point = #point + 1;
+			}
+			if( code == ')' )
+			{
+				#point = #point - 1;
+			}
+			
+			if( (code == '}') || (code == '{') || (code == eof) || (code == ';') )
+			{
+				movetolineno #org_x, #org_y;
+				call selcurrent;
+				endmacro;
+			}
+			
+			if( x==0 && y==0 )
+			{
+				moveto #org_x, #org_y;
+				call selcurrent;
+				endmacro;
+			}
+		}
+	}
+
+//
+// ) → 対応する ( に移動　＆選択
+//
+	escape;
+	right;
+	
+	beginsel;
+	movetolineno #startsel_x, #startsel_y;
+	endsel;
+	
+enabledraw;
+endmacro;
+
+
+//
+// 開始位置が最外郭の ( であった場合、
+// その () 内を選択するサブルーチン。
+//
+selcurrent:
+	if( #startcode == '(' )
+	{
+		#point = 1;
+		while( #point > 0 )
+		{
+			right;
+			
+			#ccode = colorcode & 0x0000001f;
+			if( (#ccode != 3) && (#ccode != 20) )
+			{
+				if( code == '(' )
+				{
+					#point = #point + 1;
+				}
+				if( code == ')' )
+				{
+					#point = #point - 1;
+				}
+				
+				if( (code == '}') || (code == '{') || (code == eof) || (code == ';') )
+				{
+					movetolineno #org_x, #org_y;
+					endmacro;
+				}
+			}
+		}
+		
+		beginsel;
+		movetolineno #org_x + 1, #org_y;
+		endsel;
+	}
+	
+endmacro;
+

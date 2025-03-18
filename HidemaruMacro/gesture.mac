@@ -1,0 +1,332 @@
+////////////////////////////////////////////////////////////////////////
+//  
+//  「強引にマウスジェスチャ」for 秀丸エディタ  Ver 1.1
+//  
+//  秀丸専用のマウスジェスチャです
+//  マウスの動きに対応する動作をマクロで記述できます
+//  
+////////////////////////////////////////////////////////////////////////
+goto main;
+
+////////////////////////////////////////////////////////////////////////
+//  設定のようなもの
+SetConfig:
+	#cfg_thr     = 50;       // 動き検出の閾値
+	#cfg_width   = 3;        // 軌跡の太さ
+	#cfg_col     = 0xff8080; // 軌跡の色
+	#cfg_locus   = 1;        // 0にすると軌跡を表示しなくなる
+	#cfg_wheel   = 1;        // 0にするとホイールの動きを検出しなくなる
+	#cfg_timeout = 10000;     // (だいたい)この時間動かさないでいると終了(ms) 0は無限
+	
+	return;
+	
+SetImmediateGesture:
+	// 「すぐに実行」
+	//  例のように書くことで、マウス動作の検出をその時点で停止します
+	//  256種類まで登録できます
+	// (例)
+	// call Immediate, "D";   // 最初に下に動かすと即実行
+	// call Immediate, "U";   // 最初に下に動かすと即実行
+	call Immediate, "^";   // 最初にホイール上で即実行
+	call Immediate, "v";   // 最初にホイール下で即実行
+	call Immediate, "<<<"; // 最初に左クリック×３で即実行
+	
+	return;
+
+////////////////////////////////////////////////////////////////////////
+//  ここに実際に行う処理を追加してください
+Execute:
+	##cont = 0;
+	$$tmp = $$1;
+	
+	// $$tmp には、マウスの動きを示す文字列が入っています
+	//   'L' 左へ動いた  'D' 下へ動いた  'U' 上へ動いた  'R' 右へ動いた
+	//   '<' 左クリック  '|' 中クリック  '>' 右クリック
+	//   '^' ホイール上  'v' ホイール下
+	// これらの組み合わせとなります
+	// ※クリック以外は、同じ文字が連続することはありません
+	// (例)  "LR>v" ... 左・右・右クリック・ホイール下 の順
+	
+	// ##cont を 1 にすると、
+	// 処理終了後も新たにマウスの動きを検出しに行きます
+	
+	//// 1 stroke ////////////////////////////////////////////
+	
+	if( 0 && ( ( $$tmp == "D" ) || ( $$tmp == "U" ) ) ) // ↓ or ↑
+	{
+		// スワイプっぽい操作でスクロール
+		// 最初にマウスを上下に動かすことで開始
+		// call Immediate, "D";  と
+		// call Immediate, "U";  をしておく必要あり
+		// …ホイールで十分？　はい。。。
+		#dllID = loaddll( macrodir + "\\idemaru.dll" );
+		
+		##state = dllfunc( #dllID, "GetMouseState", 0 );
+		while( ##state != 0 )
+		{
+			##cur_y = dllfunc( #dllID, "GetMousePosY" );
+			
+			call GetLineSpace;
+			##absPos = ( ##cur_y - #org_y ) / ( fontsize + ##return - 1);
+			##relPos = ##absPos - #lastAbs;
+			#lastAbs = ##absPos;
+			
+			while( ##relPos > 0 )
+			{
+				rolldown;
+				##relPos = ##relPos - 1;
+			}
+			
+			while( ##relPos < 0 )
+			{
+				rollup;
+				##relPos = ##relPos + 1;
+			}
+			##state = dllfunc( #dllID, "GetMouseState", 0 );
+		}
+		freedll( #dllID );
+	}
+	
+	if( $$tmp == "L" )  // ←
+	{
+		// タブ切り替え
+		prevtab;
+	}
+	if( $$tmp == "R" )  // →
+	{
+		// タブ切り替え
+		nexttab;
+	}
+	
+	if( $$tmp == "v" ) // Wheel Down
+	{
+		// クリックしながらホイールでページ送り
+		halfnextpage;
+		#dllID = loaddll( macrodir + "\\idemaru.dll" );
+		##state = dllfunc( #dllID, "GetMouseState", 0 );
+		freedll( #dllID );
+		if( ##state != 0 )
+		{
+			##cont = 1;
+			#cfg_locus = 0;
+		}
+	}
+	
+	if( $$tmp == "^" ) // Wheel Up
+	{
+		// クリックしながらホイールでページ送り
+		halfprevpage;
+		#dllID = loaddll( macrodir + "\\idemaru.dll" );
+		##state = dllfunc( #dllID, "GetMouseState", 0 );
+		freedll( #dllID );
+		if( ##state != 0 )
+		{
+			##cont = 1;
+			#cfg_locus = 0;
+		}
+	}
+	
+	//// 2 stroke ////////////////////////////////////////////
+	
+	if( $$tmp == "RU" )  // →↑
+	{
+		gofileend;
+	}
+	
+	if( $$tmp == "RD" )  // →↓
+	{
+		gofiletop;
+	}
+	
+	if( $$tmp == "LU" )  // →↑
+	{
+		findup;
+		escape;
+	}
+	
+	if( $$tmp == "LD" )  // →↓
+	{
+		finddown;
+		escape;
+	}
+	
+	//// 3 stroke ////////////////////////////////////////////
+	
+	if( $$tmp == "LUR" )  // ←↑→
+	{
+		// 最後に編集したところへ
+		golastupdated;
+	}
+	
+	if( $$tmp == "RUL" )  // →↑←
+	{
+		// 最後に編集したところへ
+		prevpos;
+	}
+	
+	if( $$tmp == "<<<" )  // 左クリック×3
+	{
+		// 全選択
+		selectall;
+	}
+	
+	if( $$tmp == "RLR" )  // →←→
+	{
+		// 最後に編集したところへ
+		nexthidemaru;
+	}
+	
+	if( $$tmp == "LRL" )  // ←→←
+	{
+		// 最後に編集したところへ
+		prevhidemaru;
+	}
+	
+	//// over 4 stroke ////////////////////////////////////////////
+	if( ( $$tmp == "LDRU" ) || ( $$tmp == "LDRUL") ) // ←↓→↑(←)
+	{
+		// == 上から反時計回りに一回転
+	}
+	
+	if( $$tmp == "RL<|v^" ) // →←(L-Clk)(M-Clk)(WheelDown)(WheelUp)
+	{
+		; // こんなのでも可
+	}
+	
+	//// No action ////////////////////////////////////////////////
+	if( $$tmp == "" )
+	{
+		; // 動かなかった
+	}
+	
+	// このような感じで、各ifを追加・割り当てたい処理を記述してください
+	// (注意)
+	//  ストローク数は最大7
+	//  クリック以外は、同じ文字が連続することはありません
+	// 当然単文でなく、制御文や他のマクロも含めて色々組み合わせてOKです
+	
+	return ##cont;
+
+GetLineSpace:
+	if( linespace == 0 )
+	{
+		##ret = 0;
+	}
+	else if( linespace == 1 )
+	{
+		##ret = fontsize / 10;
+	}
+	else if( linespace == 2 )
+	{
+		##ret = fontsize / 8;
+	}
+	else if( linespace == 3 )
+	{
+		##ret = fontsize / 6;
+	}
+	else if( linespace == 4 )
+	{
+		##ret = fontsize / 4;
+	}
+	else if( linespace == 5 )
+	{
+		##ret = fontsize / 3;
+	}
+	else if( linespace == 6 )
+	{
+		##ret = fontsize / 2;
+	}
+	else if( linespace == 7 )
+	{
+		##ret = fontsize;
+	}
+	else if( linespace == 8 )
+	{
+		##ret = fontsize * 3 / 2;
+	}
+	else if( linespace == 9 )
+	{
+		##ret = fontsize * 2;
+	}
+	else if( linespace == 10 )
+	{
+		##ret = fontsize * 2 / 3;
+	}
+	else if( linespace == 11 )
+	{
+		##ret = fontsize * 3 / 4;
+	}
+	else
+	{
+		##ret = 0;
+	}
+	
+	return ##ret;
+
+/////////////////////////////////////////////////////////////////////////////
+// ここから下は、あまり気にしなくて大丈夫です
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+
+Immediate:
+	##dmy = dllfunc( #dllID, "SetImmediateGesture", $$1 );
+	return;
+
+main:
+call SetConfig;
+##contFlag = 2;
+while( ##contFlag )
+{
+	////////////////////////////////////////////////////////////////////////
+	//  前準備
+	#dllID = loaddll( macrodir + "\\idemaru.dll" );
+	if( !result )
+	{
+		// Fatal
+		message "failed to load dll";
+		##contFlag = 0;
+	}
+	else
+	{
+		if( ##contFlag == 2 )
+		{
+			#org_x = dllfunc( #dllID, "GetMousePosX" );
+			#org_y = dllfunc( #dllID, "GetMousePosY" );
+		}
+		
+		call SetImmediateGesture;
+		
+		// 「ホイールの有効・無効の選択」
+		if( #cfg_wheel != 0 )
+		{
+			##dmy = dllfunc( #dllID, "EnableWheelGesture" );
+		}
+		
+		##dmy = dllfunc( #dllID, "SetTimeout", #cfg_timeout );
+		##dmy = dllfunc( #dllID, "SetLineWidth", #cfg_width );
+		
+		
+		// 「マウスの動き検出」
+		disablebreak;
+		if( #cfg_locus != 0 )
+		{
+			$$tmp = dllfuncstr( #dllID, "DetectMouseGesture", #cfg_thr, #cfg_col, hidemaruhandle(0) );
+		}
+		else
+		{
+			$$tmp = dllfuncstr( #dllID, "DetectMouseGesture", #cfg_thr, 0, 0 );
+		}
+		
+		#dif_x = dllfunc( #dllID, "GetMouseDif_X" );
+		#dif_y = dllfunc( #dllID, "GetMouseDif_Y" );
+		
+		freedll( #dllID );
+		enablebreak;
+		
+		call Execute, $$tmp;
+		##contFlag = ##return;
+		redraw;
+	}
+}

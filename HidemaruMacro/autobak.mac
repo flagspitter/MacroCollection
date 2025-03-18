@@ -1,0 +1,72 @@
+title 0, 1;
+// $$tmp = gettitle(0);
+$$tmp = $$tmp + " [AutoBackup ...]";
+title $$tmp, 1;
+
+// 最大世代数
+##num = 10;
+call CreateBakExtension ##num;
+$$prevExt = $$return;
+
+// 最古のファイルが最大世代数以上になる場合、削除
+if( existfile( filename2 + $$prevExt ) )
+{
+	deletefile filename2 + $$prevExt;
+}
+
+// 古い順にファイル名をシフトしていく
+while( ##num >= 0 )
+{
+	##num = ##num - 1;
+	call CreateBakExtension ##num;
+	$$ext = $$return;
+	if( existfile( filename2 + $$ext ) )
+	{
+		runex "cmd /C ren \"" + filename2 + $$ext + "\" \"" + basename2 + $$prevExt + "\"",
+			1,      // sync    0:async 1:sync
+			0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+			0, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+			0, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace
+			0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+			2,      // show    0:auto 1:show 2:hide
+			1,      // draw    0:no draw 1:draw
+			0;      // unicode 0:ansi 1:unicode
+	}
+	$$prevExt = $$ext;
+}
+
+// まず、空のファイルを作成。その後、追加保存。
+//   ※appendsaveは、存在しないファイルに対して実行できない
+//   ※copy con foo.bar では、con にファイル内容をうまく持っていけない
+runex "cmd /C copy /Y nul \"" + filename2 + ".00~\"",
+	1,      // sync    0:async 1:sync
+	0, "",  // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+	0, "",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region
+	0, "",  // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace
+	0, "",  // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+	2,      // show    0:auto 1:show 2:hide
+	1,      // draw    0:no draw 1:draw
+	0;      // unicode 0:ansi 1:unicode
+appendsave filename2 + ".00~";
+
+title 0, 1;
+//$$tmp = gettitle(0);
+$$tmp = " [AutoBackup" + " ";
+$$tmp = $$tmp + year + "/" + month + "/" + day + "(" + dayofweek + ")" + " ";
+$$tmp = $$tmp + time + "]";
+title $$tmp, 1;
+title -1, 1;
+
+endmacro;
+//// ここまで
+
+// 拡張子の後につける文字列を生成
+// String CreateBakExtension( int num )
+CreateBakExtension:
+	$$ret = str(##1);
+	while( strlen($$ret) < 2 )
+	{
+		$$ret = "0" + $$ret;
+	}
+	$$ret = "." + $$ret + "~";
+	return $$ret;

@@ -1,0 +1,3 @@
+$$iniFile = currentmacrodirectory + "\\highlighter.ini";
+#userData = getininum( $$iniFile, "general", "key" );
+nextcolormarker 0x05, #userData;

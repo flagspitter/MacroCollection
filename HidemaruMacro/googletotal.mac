@@ -1,0 +1,715 @@
+// googletotal.mac Googleで検索した結果のすべてを取得するマクロ
+// created by 秀まるお
+// version 1.00  2011.05.11
+// version 2.00  2011.07.19
+//
+// 使い方：
+//           google検索したい文字列を選択してマクロ実行するだけ。
+//           何も選択せずにマクロ実行した場合はマクロ実行直後に文字列入力を求められる。
+//           文字列を入力すると、次に出力するデータの形式を入力するメニューが出てくる。
+//           メニュー選択すると実際の検索が実行される。
+//           そのままずっと放置していくと、検索結果が無くなるまで（またはgoogle検索の上限
+//           である1000個程度の上限に達するまで）検索を続けていく。Pauseキーを押せばその段階
+//           の結果までで打ち切る。
+//           その結果はデスクトップにhtml形式ファイルとして保存される。
+// 注意：
+//           もしもgoogleさんの出力結果の形式が将来変更になると、このマクロもうまく動かなく
+//           なる可能性があります。
+//
+//
+// ライブラリにアップロードする説明文:
+// お名前(ハンドルネール): 秀まるお
+// ホームページアドレス:   http://hide.maruo.co.jp/
+// タイトル:               Googleで検索した結果のすべてを取得するマクロ V2.00
+// ファイル名:             googletotal200.zip
+// 補足説明 :
+// 
+// 　Googleを使って検索した結果のすべてを取得するマクロです。
+// 　検索結果のページの下の方に出てくる「Gooooooooogle」の所をすべてクリックした結果を
+// 　全部くっつけたような、とにかくすべての結果を取得します。
+// 　出力するデータの形式は、シンプルな表タイプの物だけになりました。（V2.00より）
+// 　V2.00の改版内容：googleの出力する形式が変わったのでそれに対応しました。
+// 　秀丸エディタV8.04以上用です。
+//
+// 改版履歴：
+// V2.00 googleの形式が変わったのでそれに対応。結果、表形式だけしかサポートしないことにした。
+//       Escキーで中断するんじゃなくて、Pauseキーで中断するようにした。（実際には何を押しても中断する）
+//       文字列の変換の処理を、replaceallfast関数を使うようにして高速化した。
+//       googleに対してリクエストを発行する間隔を５秒以上になるようにした。
+
+
+	if( selecting ) {
+		#xStart = seltopx;
+		#yStart = seltopy;
+		#xEnd = selendx;
+		#yEnd = selendy;
+	} else {
+		#xEnd = x; #yEnd = y;
+		gowordtop2;
+		if( x == #xEnd && y == #yEnd ) {
+			if( code <= ' ' ) {
+				wordleft2;
+			} else {
+				#xStart = #xEnd;
+				#yStart = #yEnd;
+				gowordend;
+				#xEnd = x;
+				#yEnd = y;
+				moveto #xStart, #yStart;
+				goto Label_SkipMoveEnd;
+			}
+		}
+		#xStart = x; #yStart = y;
+		moveto #xEnd, #yEnd;
+Label_SkipMoveEnd: ;
+	}
+	$target = gettext( #xStart, #yStart, #xEnd, #yEnd, 1 );
+	$target = input( "google検索する文字列の入力", $target);
+	if( strlen($target) == 0 ) {
+		endmacro;
+	}
+Label_RestartType:
+	if( basename != "" || updated ) {
+		newfile;
+	}
+	config "xAutoAdjustOrikaeshi:2";
+
+	call Utf8Encode $target;
+	$s = $$return;
+	$gurl = "http://www.google.co.jp/search?q="
+		 + $s
+		 + "&hl=ja&ie=UTF-8";
+	#http = createobject( "Msxml2.XMLHTTP" );
+	if( #http == 0 ) {
+		#http = createobject( "Microsoft.XMLHTTP" );
+		if( #http == 0 ) {
+			message "XMLHTTPオブジェクトの生成に失敗しました。";
+			endmacro;
+		}
+	}
+
+//	loaddll "HmJre.dll";
+//	$exp = "<a href=\\\"(http://(?![a-z]+\\.google)[^\\\"]+)\\\"[^>]*?>(.*?)</a>";
+//		//  a href=\"(http://(?![a-z]+\.google)[^\"]+)\"
+//	#n = dllfunc("SetUnicodeIndexAutoConvert", 1);
+
+	#hit = 0;
+
+//テスト
+//	#hidemaru = hidemaruhandle(0);
+//	newfile;
+//	#work = hidemaruhandle(0);
+//	setactivehidemaru #hidemaru;
+
+	disablebreak;
+	#start = 0;
+	#tickPrev = tickcount - 5 * 1000;
+
+	while(1) {
+		if( keypressed ) {
+			question "マクロを終了して今の状態で結果を保存しますか？";
+			if( result == yes ) {
+				break;
+			}
+		}
+		$gurl2 = $gurl + "&start=" + str(#start) + "";
+
+		// ５秒に１回しかリクエストしないことにする。
+		#wait = 5 * 1000 - (tickcount - #tickPrev);
+		if( #wait > 0 ) {
+			if( #wait > 5 * 1000 ) {
+				#wait = 5 * 1000;
+			}
+			title "ウェイト中";
+			sleep #wait;
+		}
+		#tickPrev = tickcount;
+
+		title "中断=Pauseキー, 取得中(start=" + str(#start) + ") - " + $gurl2;
+
+		callmethod #http, "open", "GET", $gurl2, false;
+		callmethod #http, "send", "";
+		$resp = getpropstr( #http, "responseText" );
+
+		#nextlink = strstr( $resp, "<b>次へ</b>" );
+
+		disabledraw;
+		#x = x; #y = y;
+		insert $resp;
+		gofileend;
+		beginsel;
+		moveto #x, #y;
+		endsel;
+		call DeleteNoScript;
+		gofileend;
+		beginsel;
+		moveto #x, #y;
+		endsel;
+		call DeleteScript;
+		gofileend;
+		beginsel;
+		moveto #x, #y;
+		endsel;
+		call DeleteStyle;
+		gofileend;
+		beginsel;
+		moveto #x, #y;
+		endsel;
+		call DeleteSearchLink;
+
+//		gofileend;
+//		beginsel;
+//		moveto #x, #y;
+//		endsel;
+//		call InsertLinkTarget;
+
+		gofileend;
+		$$return = gettext( #x, #y, x, y );
+		beginsel;
+		moveto #x, #y;
+		delete;
+
+		enabledraw;
+
+		title "処理中...";
+		#hitTemp = 0;
+		while(1) {
+			if( keypressed ) {
+				question "マクロを終了して今の状態で結果を保存しますか？";
+				if( result == yes ) {
+					goto Label_SuperBreak;
+				}
+			}
+			#x = strstr( $resp, "<a href=\"http://" );
+			if( #x < 0 ) {
+				break;
+			}
+			$resp = midstr( $resp, #x + 9 );
+			#x = strstr( $resp, "\"" );
+			$url = leftstr( $resp, #x );
+			#xSlash = strstr( midstr( $url, 7 ), "/" );
+			if( #xSlash < 0 ) {
+				#xSlash = 9999;
+			}
+			$find = leftstr( $url, #xSlash );
+			if( strstr( $find, ".google" ) >= 0 ) {
+				// 捨てる
+				continue;
+			}
+			if( leftstr( $url, 29 ) == "http://www.google.co.jp/webhp" )  {
+				//捨てる
+				continue;
+			}
+			#x = strstr( $resp, ">" );
+			#x2 = strstr( $resp, "</a>" );
+			if( #x < 0 || #x2 < 0 ) {
+				continue;
+			}
+			$text = midstr( $resp, #x + 1, #x2 - #x - 1 );
+			$resp = midstr( $resp, #x2 + 4 );
+
+			$comment = "";
+
+			//V2.00 コメント形式変更。
+			//      ２種類ある？
+			//      いろいろありそうで怖い。
+			#cite = strstr( $resp, "<span class=st>" );
+			if( #cite > 0 ) {
+				$comment = midstr( $resp, #cite + 15 );
+				#cite = strstr( $comment, "</span>" );
+				if( #cite >= 0 ) {
+					$comment = leftstr( $comment, #cite );
+				} else {
+					$comment = "";
+				}
+			} else {
+				#cite = strstr( $resp, "<div class=\"s\">" );
+				if( #cite > 0 ) {
+					$comment = midstr( $resp, #cite + 15 );
+					#cite = strstr( $comment, "</div>" );
+					if( #cite >= 0 ) {
+						$comment = leftstr( $comment, #cite );
+					} else {
+						$comment = "";
+					}
+				}
+			}
+
+			if( #hit == 0 ) {
+				insert "<title>" + $target  +"</title>\n";
+				insert "<table border=1>\n";
+			}
+
+			insert "<tr><td nowrap>" + str(#hit + 1) + "<br><a href=\"" + $url + "\" target=_blank>" + $text + "</a></td><td>"
+					+ $comment + "</td></tr>\n";
+
+			#hit = #hit + 1;
+			#hitTemp = #hitTemp + 1;
+		}
+		title "見つかった数 = " + str(#hit);
+		if( #hitTemp == 0 ) {
+			break;
+		}
+		if( #nextlink < 0 ) {
+			break;
+		}
+		#start = #start + 10;
+
+		if( keypressed ) {
+			question "マクロを終了して今の状態で結果を保存しますか？";
+			if( result == yes ) {
+				break;
+			}
+		}
+
+	}
+Label_SuperBreak: ;
+
+	if( #hit != 0 ) {
+		insert "</table>\n";
+	}
+	replaceallfast "(<a [^>]*?href=\"[^\"]*\"(?![^>]*target=[^>]*>)[^>]*?)>", "\\1 target=_blank", regular, nocasesense;
+
+
+	title 0;
+
+	releaseobject #http;
+	if( #hit == 0 ) {
+		message "google検索しても何も結果が得られませんでした。時間を置いてからもう一度やり直すとうまくいくと思います。\n\n検索文字列 = " + $target;
+		endmacro;
+	}
+	openreg "CURRENTUSER", "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders";
+	$folder = getregstr("Desktop");
+	closereg;
+	call ValidateForFileName $target;
+	$basename = $$return + ".html";
+	$filename = $folder + "\\" + $basename;
+	if( existfile( $filename ) ) {
+		question $filename + " は既に存在しています。上書きしてもいいですか？";
+		if( result !=  yes ) {
+			endmacro;
+		}
+	}
+	saveas $filename, unicode;
+	question "取得した結果をデスクトップに「" +
+				$basename +
+				"」の名前で保存しました。\nブラウザで今すぐ開きますか？";
+	if( result == yes ) {
+		openbyshell $filename;
+	}
+	endmacro;
+
+
+
+endmacro;
+endmacro;
+endmacro;
+endmacro;
+
+
+CheckJapanese:
+	##len = wcslen($$1);
+	##i = 0;
+	while( ##i < ##len ) {
+		##code = unicode( wcsmidstr( $$1, ##i, 1 ) );
+		if( ##code >= 0x3041 ) {
+			return 1;
+		}
+		##i = ##i + 1;
+	}
+	return 0;
+
+
+Utf8Encode:
+	title "Utf8Encode";
+	##len = wcslen($$1);
+	$$ret = "";
+	##i = 0;
+	while( ##i < ##len ) {
+		$$code = wcsmidstr( $$1, ##i, 1 );
+		##code = unicode( $$code );
+		if( (##code >= '0' && ##code <= '9')
+		 || (##code >= 'A' && ##code <= 'Z')
+		 || (##code >= 'a' && ##code <= 'z')
+		 || ##code == '_' ) {
+			$$ret = $$ret + $$code;
+		} else {
+			// unicode --> utf-8変換
+			if( ##code < 0x80 ) {
+				//1バイト
+			} else if( ##code < 0x800 ) {
+				//2バイト
+				##code = ((((##code / 0x40) & 0x1F) | 0xC0) * 0x100)
+					   + ((##code & 0x3F) | 0x80);
+			} else if( ##code < 0x10000 ) {
+				//3バイト
+				##code = ((((##code / 0x1000) & 0x0F) | 0xE0) * 0x10000)
+					   + ((((##code / 0x40) & 0x3F) | 0x80) * 0x100)
+					   + ((##code & 0x3F) | 0x80);
+			} else /*if( ##code < 0x400000 )*/ {
+				//4バイト
+				##code = ((((##code / 0x40000) & 0x07) | 0xF0) * 0x1000000)
+					   + ((((##code / 0x1000) & 0x3F) | 0x80) * 0x10000)
+					   + ((((##code / 0x40) & 0x3F) | 0x80) * 100)
+					   + ((##code & 0x3F) | 0x80);
+			}
+			$$hex = hex( ##code );
+			if( (strlen($$hex) & 1) != 0 ) {
+				$$hex = "0" + $$hex;
+			}
+			while( strlen($$hex) > 0 ) {
+				$$ret = $$ret + "%" + leftstr( $$hex, 2 );
+				$$hex = midstr( $$hex, 2 );
+			}
+		}
+		##i = ##i + 1;
+	}
+	title "Utf8Encode ret";
+	return $$ret;
+
+JsonDecode:
+	title "JsonDecode";
+	if( encode >= 8 ) {
+		$$temp = "";
+		##i = 0;
+		##len = strlen($$1);
+		##foundSjis = 0;
+		while( ##i < ##len ) {
+			$$c = midstr( $$1, ##i, 1 );
+			##code = ascii( $$c );
+			$$temp = $$temp + $$c;
+			if( ##code >= 0x80 ) {
+				##foundSjis = 1;
+			}
+			##i = ##i + 1;
+		}
+		if( strlen($$temp) == ##len && ##foundSjis != 0 ) {
+			goto JsonDecode_ShiftJIS;
+		}
+	}
+	##len = wcslen($$1);
+	$$ret = "";
+	##i = 0;
+	while( ##i < ##len ) {
+		$$code = wcsmidstr( $$1, ##i, 1 );
+		if( $$code == "\\" ) {
+			##i = ##i + 1;
+			$$code = wcsmidstr( $$1, ##i, 1 );
+			if( $$code == "u" ) {
+				// \uXXXX
+				##i = ##i + 1;
+				$$code = wcsmidstr( $$1, ##i, 4 );
+				if( wcslen($$code) == 4 ) {
+					##code = val( "0x" + $$code );
+					if( ##code != 0 ) {
+						$$ret = $$ret + unichar( ##code );
+						##i = ##i + 4;
+					}
+				}
+			} else {
+				if( $$code == "b" ) {
+					$$ret = $$ret + "\x08";
+				} else if( $$code == "f" ) {
+					$$ret = $$ret + "\x0C";
+				} else if( $$code == "r" ) {
+					$$ret = $$ret + "\r";
+				} else if( $$code == "n" ) {
+					$$ret = $$ret + "\n";
+				} else if( $$code == "t" ) {
+					$$ret = $$ret + "\t";
+				} else {
+					$$ret = $$ret + $$code;
+				}
+				##i = ##i + 1;
+			}
+		} else {
+			$$ret = $$ret + $$code;
+			##i = ##i + 1;
+		}
+	}
+	title "JsonDecode ret";
+	return $$ret;
+
+
+JsonDecode_ShiftJIS:
+	title "JsonDecode_ShiftJIS";
+	##len = strlen($$1);
+	$$ret = "";
+	##i = 0;
+	while( ##i < ##len ) {
+		$$code = midstr( $$1, ##i, 1 );
+		if( $$code == "\\" ) {
+			##i = ##i + 1;
+			$$code = midstr( $$1, ##i, 1 );
+			if( $$code == "u" ) {
+				// \uXXXX
+				##i = ##i + 1;
+				$$code = midstr( $$1, ##i, 4 );
+				if( strlen($$code) == 4 ) {
+					##code = val( "0x" + $$code );
+					if( ##code != 0 ) {
+						$$ret = $$ret + unichar( ##code );
+						##i = ##i + 4;
+					}
+				}
+			} else {
+				if( $$code == "b" ) {
+					$$ret = $$ret + "\x08";
+				} else if( $$code == "f" ) {
+					$$ret = $$ret + "\x0C";
+				} else if( $$code == "r" ) {
+					$$ret = $$ret + "\r";
+				} else if( $$code == "n" ) {
+					$$ret = $$ret + "\n";
+				} else if( $$code == "t" ) {
+					$$ret = $$ret + "\t";
+				} else {
+					$$ret = $$ret + $$code;
+				}
+				##i = ##i + 1;
+			}
+		} else {
+			$$ret = $$ret + $$code;
+			##i = ##i + 1;
+			##code = ascii( $$code );
+			if( (##code >= 0x81 && ##code <= 0x9F)
+			 || (##code >= 0xE0 && ##code <= 0xFE) ) {
+				// 漢字の１バイト目？
+				$$code2 = midstr( $$1, ##i, 1 );
+				##code2 = ascii( $$code2 );
+				if( ##code2 >= 0x40 ) {
+					$$ret = $$ret + $$code2;
+					##i = ##i + 1;
+				}
+			}
+		}
+	}
+	title "JsonDecode_ShiftJIS ret";
+	return $$ret;
+
+HtmlDecode:
+	title "HtmlDecode";
+	##len = wcslen($$1);
+	$$ret = "";
+	##i = 0;
+	while( ##i < ##len ) {
+		$$code = wcsmidstr( $$1, ##i, 1 );
+		if( $$code == "&" ) {
+			##i = ##i + 1;
+			$$code = wcsmidstr( $$1, ##i, 1 );
+			if( $$code == "#" ) {
+				##i = ##i + 1;
+				$$code = wcsmidstr( $$1, ##i, 1 );
+				if( $$code == "x" || $$code == "X" ) {
+					// &#xHHHH;
+					##i = ##i + 1;
+					##add = 0;
+					while(1) {
+						$$code = wcsmidstr( $$1, ##i, 1 );
+						##code = ascii($$code);
+						if( ##code >= '0' && ##code <= '9' ) {
+							##add = ##add * 16 + ##code - '0';
+						} else if( ##code >= 'a' && ##code <= 'f' ) {
+							##add = ##add * 16 + ##code - 'a' + 10;
+						} else if( ##code >= 'A' && ##code <= 'F' ) {
+							##add = ##add * 16 + ##code - 'A' + 10;
+						} else {
+							break;
+						}
+						##i = ##i + 1;
+					}
+					$$ret = $$ret + unichar( ##add );
+				} else {
+					##add = 0;
+					while(1) {
+						$$code = wcsmidstr( $$1, ##i, 1 );
+						##code = unicode($$code);
+						if( ##code >= '0' && ##code <= '9' ) {
+							##add = ##add * 10 + ##code - '0';
+						} else {
+							break;
+						}
+						##i = ##i + 1;
+					}
+					$$ret = $$ret + unichar( ##add );
+				}
+			} else {
+				##len2 = 0;
+				while(1) {
+					$$code = wcsmidstr( $$1, ##i + ##len2, 1 );
+					##code = unicode($$code);
+					if( ##code <= ' ' || ##code == ';' ) {
+						break;
+					}
+					##len2 = ##len2 + 1;
+				}
+				$$part = wcsmidstr( $$1, ##i, ##len2 );
+				##code = 0;
+				if( $$part == "nbsp" ) {
+					##code = ' ';
+				} else if( $$part == "quot" ) {
+					##code = '\"';
+				} else if( $$part == "amp" ) {
+					##code = '&';
+				} else if( $$part == "lt" ) {
+					##code = '<';
+				} else if( $$part == "gt" ) {
+					##code = '>';
+				} else if( $$part == "yen" ) {
+					##code = '\\';
+				} else if( $$part == "brvbar" ) {
+					##code = '|';
+				} else if( $$part == "acute" ) {
+					##code = '`';
+				} else if( $$part == "copy" ) {
+					##code = 0xA9;
+				} else if( $$part == "iexcl " ) {
+					##code = 0xA1;
+				} else if( $$part == "cent" ) {
+					##code = 0xA2;
+				} else if( $$part == "pound" ) {
+					##code = 0xA3;
+				} else if( $$part == "curren" ) {
+					##code = 0xA4;
+				} else if( $$part == "sect" ) {
+					##code = 0xA7;
+				} else if( $$part == "uml" ) {
+					##code = 0xA8;
+				} else if( $$part == "ordf" ) {
+					##code = 0xAA;
+				} else if( $$part == "laquo" ) {
+					##code = 0xAB;
+				} else if( $$part == "not" ) {
+					##code = 0xAC;
+				} else if( $$part == "shy" ) {
+					##code = 0xAD;
+				} else if( $$part == "reg" ) {
+					##code = 0xAE;
+				} else if( $$part == "macr" ) {
+					##code = 0xAF;
+				} else if( $$part == "deg" ) {
+					##code = 0xB0;
+				} else if( $$part == "plusmn" ) {
+					##code = 0xB1;
+				} else if( $$part == "micro" ) {
+					##code = 0xB5;
+				} else if( $$part == "para" ) {
+					##code = 0xB6;
+				} else if( $$part == "middot" ) {
+					##code = 0xB7;
+				} else if( $$part == "ordm" ) {
+					##code = 0xBA;
+				} else if( $$part == "raquo" ) {
+					##code = 0xBB;
+				} else if( $$part == "iquest" ) {
+					##code = 0xBF;
+				} else if( $$part == "divide" ) {
+					##code = 0xF7;
+				} else if( $$part == "hellip" ) {
+					##code = 0x2026;
+				} else if( $$part == "trade" ) {
+					##code = 0x2122;
+				} else if( $$part == "larr" ) {
+					##code = 0x2190;
+				} else if( $$part == "uarr" ) {
+					##code = 0x2191;
+				} else if( $$part == "rarr" ) {
+					##code = 0x2192;
+				} else if( $$part == "darr" ) {
+					##code = 0x2193;
+				} else if( $$part == "ldquo" ) {
+					##code = 8220;
+				} else if( $$part == "rdquo" ) {
+					##code = 8221;
+				} else if( $$part == "bdquo" ) {
+					##code = 8222;
+				} else if( $$part == "tilde" ) {
+					##code = 732;
+				} else if( $$part == "Prime" ) {
+					##code = 8243;
+				} else if( $$part == "frasl" ) {
+					##code = 8260;
+				} else if( $$part == "ndash" ) {
+					##code = 8211;
+				} else if( $$part == "mdash" ) {
+					##code = 8212;
+				} else if( $$part == "lsaquo" ) {
+					##code = 8249;
+				} else if( $$part == "rsaquo" ) {
+					##code = 8250;
+				} else if( $$part == "rArr" ) {
+					##code = 8658;
+				} else if( $$part == "hArr" ) {
+					##code = 8660;
+				} else if( $$part == "hearts" ) {
+					##code = 9829;
+				} else if( $$part == "diams" ) {
+					##code = 9830;
+				} else if( $$part == "clubs" ) {
+					##code = 9827;
+				} else if( $$part == "spades" ) {
+					##code = 9824;
+				} else if( $$part == "rsquo" ) {
+					##code = 8217;
+				} else if( $$part == "sbquo" ) {
+					##code = 8218;
+				}
+				if( ##code != 0 ) {
+					$$ret = $$ret + unichar( ##code );
+				}
+				##i = ##i + ##len2;
+			}
+			if( wcsmidstr( $$1, ##i, 1 ) == ";" ) {
+				##i = ##i + 1;
+			}
+		} else {
+			$$ret = $$ret + $$code;
+			##i = ##i + 1;
+		}
+	}
+	title "HtmlDecode ret";
+	return $$ret;
+
+
+DeleteScript:
+	replaceallfast "(?#maxlines:16)<script\\s[^>]*?>(.|\\n)*?</script>", "", regular, nocasesense, inselect;
+	return;
+
+DeleteNoScript:
+	replaceallfast "(?#maxlines:16)<noscript\\s[^>]*?>(.|\\n)*?</noscript>", "", regular, nocasesense, inselect;
+	return;
+
+DeleteStyle:
+	replaceallfast "(?#maxlines:16)<style\\s[^>]*?>(.|\\n)*?</style>", "", regular, nocasesense, inselect;
+	return;
+
+// おかしくなるのでやめ。
+DeleteSearchLink:
+	// <a ... href="/... " ... > ... </a> を削除する。
+	// HmJre.dllを使って高速処理させる。 --> 文字列が長すぎてダメだった。
+	//
+	// 検索： <a [^>]*?href="/[^"]*"[^>]*?>[^<>]*?</a>
+	//
+	replaceallfast "(?#maxlines:2)<a [^>]*?href=\"/[^\"]*\"[^>]*?>[^<>]*?</a>", "", regular, nocasesense, inselect;
+	return;
+
+
+InsertLinkTarget:
+	replaceallfast "(<a [^>]*?href=\"[^\"]*\"(?![^>]*target=[^>]*>)[^>]*?)>", "\\1 target=_blank", regular, nocasesense, inselect;
+	return;
+
+ValidateForFileName:
+	##x = 0;
+	##len = wcslen( $$1 );
+	while( ##x < ##len ) {
+		##code = unicode( wcsmidstr( $$1, ##x, 1 ) );
+		if( ##code == '\\' || ##code == ':' || ##code == '/'
+		 || ##code == '\"' || ##code == ',' || ##code == '<'
+		 || ##code == '>' || ##code == '|' || ##code == ';'
+		 || ##code == '?' || ##code == '*'
+		 || ##code < ' ' ) {
+			$$1 = wcsleftstr( $$1, ##x ) + "_" + wcsmidstr( $$1, ##x + 1 );
+		}
+		##x = ##x + 1;
+	}
+	return $$1;

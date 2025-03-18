@@ -1,0 +1,112 @@
+// 対応する括弧内の文字に色を付けるマクロ
+// ネストされた括弧があった場合、別な色を付ける
+
+setcompatiblemode 0x10F;
+disabledraw;
+disableerrormsg;
+
+$searchBuf = searchbuffer;
+#searchOpt = searchoption;
+
+// 色などを変えたい場合、ココを変更
+	// 背景色      0xBBGGRR
+	// #col_code[0] = 0x880000;  // 最外周の括弧
+	// #col_code[1] = 0x006600;  // 以降、ネストが深くなった場合の色
+	// #col_code[2] = 0x000066;
+	// #col_code[3] = 0x886600;
+	// #col_code[4] = 0x006666;
+	// #col_code[5] = 0x886600;
+	// #col_code[6] = 0x886666;
+	#col_code[0] = 0x220000;  // 最外周の括弧
+	#col_code[1] = 0x440000;  // 以降、ネストが深くなった場合の色
+	#col_code[2] = 0xaa0000;
+	#col_code[3] = 0xaa4400;
+	#col_code[4] = 0xaa8800;
+	#col_code[5] = 0xaa8844;
+	#col_code[6] = 0xaa8888;
+	#col_code[7] = 0xaaaaaa;
+	
+	// スタイル
+	//  0:普通  1:ボールド 2:下線付き 3:下線付きボールド 4:イタリック
+	//  5:イタリックボールド 6:下線付きイタリック 7:下線付きイタリックボールド
+	//  8:白抜き 9:極太 10:影付き 11:透過
+	#style_code[0] = 0;  // 最外周の括弧
+	#style_code[1] = 2;  // 以降、ネストが深くなった場合のスタイル
+	#style_code[2] = 2;
+	#style_code[3] = 2;
+	#style_code[4] = 2;
+	#style_code[5] = 3;
+	#style_code[6] = 3;
+	#style_code[7] = 3;
+
+// 検索開始位置を記録
+##org_x = x;
+##org_y = y;
+
+// 一番最初の '(' の位置へ移動
+searchdown2 "(", masknormal, maskonly, nohilight;
+
+// '(' が見つかった場合、色づけを実行する
+while( code == '(' )
+{
+	call ColorBrace 0;
+	right;
+}
+
+// カーソルを元の位置へ
+moveto ##org_x, ##org_y;
+
+setsearch $searchBuf, #searchOpt;
+
+enabledraw;
+endmacro;
+
+// main ここまで
+////////////////////////////////////////////////////////////////////////
+
+// 色づけ関数
+// void ColorBrace( int nestDepth )
+ColorBrace:
+{
+	// 括弧開始位置を記憶
+	##org_x = column;
+	##org_y = lineno;
+	
+	// 対応する括弧が存在している場合
+	gokakko;
+	if( result == false )
+	{
+		// message "対応する括弧がみつからない";
+	}
+	else
+	{
+		right;
+		beginsel;
+		moveto2 ##org_x + 0, ##org_y;
+		colormarker -1, #col_code[ ##1 ], #style_code[ ##1 ], 0, 0;
+		escape;
+		
+		// ネストした括弧を探す
+		right;
+		##ccode = (colorcode & 0x1f);
+		while( ( code != ')' ) || ( ( ##ccode == 0x03 ) || ( ##ccode == 0x14 ) ) )
+		{
+			if( ( code == '(' ) && ( ##ccode != 0x03 ) && ( ##ccode != 0x14 ) )
+			{
+				// Nested
+				call ColorBrace( ##1 + 1 );
+			}
+			right;
+			##ccode = (colorcode & 0x1f);
+			
+			if( code == -1 )
+			{
+				// message "予期しないEOF ";
+				break;
+			}
+		}
+	}
+	
+	return;
+}
+

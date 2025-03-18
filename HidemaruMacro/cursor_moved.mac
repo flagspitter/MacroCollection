@@ -1,0 +1,10 @@
+setcompatiblemode 0x2020F; // 部分編集等を維持、検索結果を選択
+
+// 選択状態である場合、色付け
+if( selecting && ( !multiselecting ) && ( seltoplineno == selendlineno ) )
+{
+	deletecolormarkerall "mvcol", 0x02;
+	$$str = gettext( seltopx, seltopy, selendx, selendy, 1 );
+	setsearch $$str, 0;
+	colormarkerallfound 0xffffff, 0xff0000, 11, 0, 0x02, "mvcol";
+}

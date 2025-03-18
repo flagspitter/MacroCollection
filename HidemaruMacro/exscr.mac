@@ -1,0 +1,49 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+gofiletop;
+searchdown2 "$$SaveScr[ \\t]+", casesense, regular;
+
+if( result == 0 )
+{
+	title "", 1;
+}
+else
+{
+	right;
+	beginsel;
+	golineend;
+	endsel;
+	$$exe = gettext( seltopx, seltopy, selendx, selendy );
+	escape;
+	
+	runex "cmd /k " + $$exe,
+		1,         // sync    0:async 1:sync
+		0, "",     // stdin   0:none 1:auto 2:file 3:(reserve) 4:all 5:select
+		2, "nul",  // stdout  0:none 1:auto 2:file 3:add file  4:new 5:insert 6:replace 7:output region?
+		1, "",     // stderr  0:none 1:=out 2:file 3:add file  4:new 5:insert 6:replace
+		0, "",     // folder  0:none 1:current 2:specify 3:(reserve) 4:exe's folder
+		0,         // show    0:hide 1:show
+		1,         // draw    0:no draw 1:draw
+		0;         // unicode 0:ansi 1:unicode
+	
+	title "AutoExecuted : " + $$exe, 1;
+}
+
+title -1, 1;
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+
+endmacro;
+////////////////////////////////////////

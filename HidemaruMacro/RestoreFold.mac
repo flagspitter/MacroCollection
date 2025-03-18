@@ -1,0 +1,24 @@
+//------- RestoreFold.mac ------------------------------------------//
+
+//      Ü‚è‚½‚½‚Ý•œŒ³ƒ}ƒNƒ    Ver.1.02
+
+//                                  2012.6.18   ŽRŽ‡…–¾
+
+$inifile = currentmacrodirectory + "\\fold.ini";
+$file = filename2;
+#x = x; #y = y;
+#i = 1;
+disabledraw;
+while( 1 ) {
+    #start = getininum( $inifile, $file, "start" + str(#i) ) + 1;
+    if( #start == 1 ) break;   //Ü‚è‚½‚½‚Ý‚È‚µ
+    #last = getininum( $inifile, $file, "last" + str(#i) );
+    movetolineno 1, #start;
+    beginsel;
+    movetolineno 1, #last;
+    fold;
+    #i = #i + 1;
+}
+if( #i > 1 ) moveto #x, #y;
+endmacro;
+//------------------------------------------------------------------//

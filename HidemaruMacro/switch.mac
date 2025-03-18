@@ -1,0 +1,15 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+if( selecting )
+{
+	$$orgText = gettext( seltopx, seltopy, selendx, selendy, 1 );
+	delete;
+	
+}

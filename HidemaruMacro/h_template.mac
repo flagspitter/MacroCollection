@@ -1,0 +1,41 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+disabledraw;
+begingroupundo;
+
+////////
+
+gofiletop;
+
+$$h_def = basename;
+
+##i = strstr( $$h_def, "." );
+while( ##i >= 0 )
+{
+	$$h_def = leftstr( $$h_def, ##i ) + "_" + rightstr( $$h_def, strlen( $$h_def ) - ##i - 1 ) + "_";
+	##i = strstr( $$h_def, "." );
+}
+
+insert "#ifndef " + $$h_def + "\n";
+insert "#define " + $$h_def + "\n";
+
+call InsertSection "Include Files";
+call InsertSection "Definitions / Macros";
+call InsertSection "Pre-definitions";
+call InsertSection "Public Types";
+call InsertSection "Public Function-Prototypes";
+
+insert "#endif\n";
+
+////////
+
+enabledraw;
+endgroupundo;
+endmacro;
+
+InsertSection:
+	insert "//----------------------------------------------------------------------\n";
+	insert "//-- " + $$1 + "\n";
+	insert "//----------------------------------------------------------------------\n\n";
+	return;

@@ -1,0 +1,7 @@
+##dllID = loaddll( macrodir + "\\idemaru.dll" );
+##tmp = dllfunc( ##dllID, "CloseQuickInfo", 0 );
+
+freedll( ##dllID );
+
+##dllID = loaddll( macrodir + "\\forcefreelib.dll" );
+##tmp = dllfunc( ##dllID, "FreeLibraryForced", macrodir + "\\idemaru.dll" );

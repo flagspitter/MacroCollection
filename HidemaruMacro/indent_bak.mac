@@ -1,0 +1,51 @@
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x020c;
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+begingroupundo;
+disabledraw;
+////////////////////////////////////////
+
+if( selecting )
+{
+	if( rectselecting )
+	{
+		##rect = 1;
+	}
+	
+	##topY    = seltoplineno;
+	##bottomY = selendlineno;
+	##topX    = seltopcolumn;
+	##bottomX = selendcolumn;
+	
+	##topIndent = ##topY;
+	if( ##bottomX != 0 )
+	{
+		##bottomIndent = ##bottomY + 1;
+	}
+	else
+	{
+		##bottomIndent = ##bottomY;
+	}
+	
+	escape;
+	moveto2 0, ##topIndent;
+	while( lineno < ##bottomIndent )
+	{
+		insert "\t";
+		golineend2;
+		right;
+	}
+	
+	moveto2 0, ##topY;
+	beginlinesel;
+	moveto2 0, ##bottomIndent;
+}
+
+////////////////////////////////////////
+// postprocess
+setsearch $$searchBuf, ##searchOpt;
+enabledraw;
+endgroupundo;
+////////////////////////////////////////

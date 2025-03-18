@@ -1,0 +1,71 @@
+////////////////////////////////////////////////////////
+// 井出丸【秀丸でIDEっぽい動きを】本開発前のテスト版
+// idemaru_project.mac ... プロジェクト管理
+////////////////////////////////////////////////////////
+
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// TODO ここに記述
+#numItems = 0;
+call SetMenu "マクロ開発用テンポラリ(&T)", "dev_temp.mac";
+call SetMenu "キーコードの調査(&K)",       "exam_key_state.mac";
+call SetMenu "\x01",                       "";
+call SetMenu "マーカーの保存(&M)",         "save_highlighter.mac";
+call SetMenu "マーカーの復帰(&R)",         "restore_highlighter.mac";
+call SetMenu "ハンガリアン隠蔽(&H)",       "hide_hungarian.mac";
+call SetMenu "再インデント(&I)",           "indentall.mac";
+call SetMenu "インデントのカラー表示(&V)", "fill_indent.mac";
+call SetMenu "行の比較(&L)",               "compareline.mac";
+
+menuarray $menuItem, #numItems;
+
+##pos = result;
+if( ##pos != 0 )
+{
+	// Debug
+	// message "Selected " + $menuItem[ ##pos - 1 ] + " ... " + str(##pos) + "\n"
+	//       + "->" + $macroName[ ##pos - 1 ];
+	
+	// execute
+	execmacro $macroName[ ##pos - 1 ];
+}
+
+endmacro;
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+endmacro;
+////////////////////////////////////////
+
+SetMenu:
+	$menuItem [ #numItems ] = $$1;
+	$macroName[ #numItems ] = $$2;
+	#numItems = #numItems + 1;
+	return;

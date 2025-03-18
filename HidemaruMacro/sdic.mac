@@ -1,0 +1,257 @@
+/*
+
+簡易辞書マクロ - Simple Dictionary v0.2
+
+　英和辞書、和英辞書、英英辞書、国語辞書、諺辞典、メモ帳やスクラップブック、問題と解答などに応用して活用出来る。
+
+　辞書を参照して指定する語句の解説を表示する。
+　辞書は、語句と解説とがタブ区切りで一組一行となっている。
+　選択範囲の字句あるいは選択範囲がない時はカーソル位置の単語を、指定の一行辞書で調べてメッセージ表示する。
+
+[注]
+・who と WHO を区別しない。辞書の同一行に登録する必要がある。
+・語尾変化からの原型の推定は充分ではない。単語が mine だとして、mine が登録してなくて min が登録してあれば min を探す。これは間違いで、この場合は mine を登録して辞書を充実させることで解決する。
+
+sdic.mac
+作者:sleep-walker
+
+v0.2  2012.07.13  カーソル位置の英単語が語尾変化している場合に原型を推定して検索する。
+
+v0.1  2012.02.25
+
+*/
+
+	//初期設定//////////////////////////////////////////////////
+
+	//辞書の所在
+	$dic=currentmacrodirectory+"\\SimpleDic.tsv";
+
+	//辞書に登録されていない時の動作
+	//0:登録なしのメッセージ表示のみ
+	//1:辞書を開くかどうかの問い合わせ（yes でクリップボードに語句を送る）
+	//2:辞書を開く（クリップボードに語句を送る）
+	#opendic=1;
+
+	//辞書を開いた時の画面上のカーソル行の位置
+	//0:成り行き　1:画面上端　2:画面中央
+	#cur=2;
+
+	////////////////////////////////////////////////////////////
+
+	if(!existfile($dic)){
+		message "辞書がありません。所在を確認し下さい。";
+		endmacro;
+	}
+
+	setcompatiblemode 0x0200;
+	#orgx=x;
+	#orgy=y;
+	#orgH=hidemaruhandle(0);
+
+	if(!selecting) selectword;
+	$word=gettext(seltopx, seltopy, selendx, selendy);
+	if($word == "" || $word == "\t" || $word == " " || $word == "　"){
+		message "単語にカーソルを置くか、単語を範囲を指定して下さい。";
+		enabledraw;
+		enableinvert;
+		endmacro;
+	}
+
+	call Trim $word;
+	$word=$$return;
+
+	if(findhidemaru($dic) != -1){
+		#finddic=1;
+		setactivehidemaru findhidemaru($dic);
+	}else{
+		openfile "/h "+$dic;
+	}
+	#dicH=hidemaruhandle(0);
+
+	disabledraw;
+	disableinvert;
+	escape;
+	gofiletop;
+
+	$word2=filter("", "ToLower", "", $word);
+	call ConvertString $word2;
+	$word3=$$return;
+	searchdown2 "^"+$word3+"\\t", nocasesense, regular;
+	if(result){
+		escape;
+		searchdown2 "\t";
+		moveto foundendx, foundendy;
+		$trans=gettext2(x, lineno, linelen2, lineno);
+		if($trans == "") #find=0;
+		else{
+			#find=1;
+			$word3=$word2;
+		}
+	}else{	//見つからなかった場合にさらに検索する
+		if(wcsrightstr($word2, 1) == "s"){	//複数形、comes -> come など
+			$word3=wcsleftstr($word2, wcslen($word2)-1);
+			call Search_Continue $word3;
+			if(!#find){
+				if(wcsrightstr($word2, 2) == "es"){
+					$word3=wcsleftstr($word2, wcslen($word2)-2);
+					call Search_Continue $word3;
+				}
+			}
+		}
+		if(!#find){
+			if(wcsrightstr($word2, 1) == "d"){	//過去形など
+				$word3=wcsleftstr($word2, wcslen($word2)-1);
+				call Search_Continue $word3;
+				if(!#find){
+					if(wcsrightstr($word2, 2) == "ed"){
+						$word3=wcsleftstr($word2, wcslen($word2)-2);
+						call Search_Continue $word3;
+						if(!#find){
+							if(wcsrightstr($word2, 3) == "ied"){
+								$word3=wcsleftstr($word2, wcslen($word2)-3)+"y";
+								call Search_Continue $word3;
+							}
+						}
+					}
+				}
+			}
+		}
+		if(!#find){
+			if(wcsrightstr($word2, 3) == "ing"){	//playing -> play など
+				$word3=wcsleftstr($word2, wcslen($word2)-3);
+				call Search_Continue $word3;
+			}
+			if(!#find){	//specializing -> specialize など
+				$word3=$word3+"e";
+				call Search_Continue $word3;
+			}
+			if(wcsrightstr($word2, 4) == "ning"){	//planning -> plan など
+				$word3=wcsleftstr($word2, wcslen($word2)-4);
+				call Search_Continue $word3;
+			}
+		}
+		if(!#find){
+			if(wcsrightstr($word2, 2) == "en"){	//過去分詞形 eaten -> eat など
+				$word3=wcsleftstr($word2, wcslen($word2)-2);
+				call Search_Continue $word3;
+			}
+			if(!#find){	//taken -> take など
+				$word3=$word3+"e";
+				call Search_Continue $word3;
+			}
+		}
+	}
+
+	if(#find){
+		call End;
+		message $word3+"\n\n"+$trans;
+	}else{
+		if(#opendic == 0){
+			call End;
+			message $word2+"\n\n"+"？ 登録されていません。";
+		}else if(#opendic == 1){
+			setactivehidemaru #orgH;
+			disabledraw;
+			disableinvert;
+			moveto #orgx, #orgy;
+			enabledraw;
+			enableinvert;
+			question $word2+"\n\n"+"？ 登録されていません。辞書を開きますか？";
+			if(result == yes){
+				setactivehidemaru #dicH;
+				call headstr_search;
+				setclipboard $word2;
+			}else{
+				call End;
+			}
+		}else if(#opendic == 2){
+			call headstr_search;
+			message $word2+"\n\n"+"？ 登録されていません。";
+			setclipboard $word2;
+		}
+	}
+	endmacro;
+	
+Trim://文字列の両端の空白（半角空白、全角空白、タブ）を削除
+	$$str=$$1;
+	while(1){
+		if(wcsleftstr($$str, 1) == " " || wcsleftstr($$str, 1) == "\t"){
+			$$str=wcsrightstr($$str, wcslen($$str)-1);
+		}else if(wcsleftstr($$str, 2) == "　"){
+			$$str=wcsrightstr($$str, wcslen($$str)-2);
+		}else if(wcsrightstr($$str, 1) == " " || wcsrightstr($$str, 1)== "\t"){
+			$$str=wcsleftstr($$str, wcslen($$str)-1);
+		}else if(wcsrightstr($$str, 2) == "　"){
+			$$str=wcsleftstr($$str, wcslen($$str)-2);
+		}else break;
+	}
+	return $$str;
+
+headstr_search://語句の頭文字を検索
+	disabledraw;
+	disableinvert;
+	gofiletop;
+	##len=wcslen($word2);
+	##i=0;
+	while(##i < ##len){
+		escape;
+		golinetop2;
+		$$head=wcsleftstr($word2, ##i+1);
+		call ConvertString $$head;
+		searchdown2 "^"+$$return, nocasesense, regular, hilight;
+		if(!result) break;
+		else #find=1;
+		##i=##i+1;
+	}
+	if(#find){
+		golinetop2;
+		$$head=wcsleftstr($word2, ##i);
+		call ConvertString $$head;
+		searchdown2 "^"+$$return, nocasesense, regular, hilight;
+		setclipboard $word2;
+	}
+	moveto x, y;	//Ver8.1X以前のバグ対策（escapeの代用）
+	if(#cur == 0) enabledraw;
+	else if(#cur == 1) enabledraw y;
+	else if(#cur == 2) enabledraw y-windowheight/2;
+	enableinvert;
+	return;
+
+Search_Continue://検索を続行
+	call ConvertString $$1;
+	searchdown2 "^"+$$return+"\\t", nocasesense, regular;
+	if(result){
+		escape;
+		searchdown2 "\t";
+		moveto foundendx, foundendy;
+		$trans=gettext2(x, lineno, linelen2, lineno);
+		if($trans == "") #find=0;
+		else #find=1;
+	}
+	return;
+
+ConvertString://メタキャラクタを正規表現の検索文字列に変換
+	$$s=$$1;
+	##len=wcslen($$s);
+	##i=0;
+	while(##i < ##len){
+		##pos=wcsstrstr("()[]{}.+*-?^$\\|", wcsmidstr($$s, ##i, 1));
+		if(##pos >= 0){
+			$$s=wcsleftstr($$s, ##i)+"\\"+wcsmidstr($$s, ##i, 999);
+			##len=##len+1;
+			##i=##i+1;
+		}
+		##i=##i+1;
+	}
+	return $$s;
+
+End://終了処理
+	setactivehidemaru #orgH;
+	if(!#finddic) closehidemaru #dicH;
+	disabledraw;
+	disableinvert;
+	moveto #orgx, #orgy;
+	enabledraw;
+	enableinvert;
+	return;
+

@@ -1,0 +1,76 @@
+//  蛍光ペン保存マクロ(復帰用) save_highlighter.mac
+//  restore_highlighter.mac で保存した内容を復帰する
+
+//////////////////////////////////////////////////////////////////////////////
+// 下準備
+//////////////////////////////////////////////////////////////////////////////
+setcompatiblemode 0x200;
+disabledraw;
+
+##max = 100; // 保存できる最大数
+
+##basePosX = x;
+##basePosY = y;
+gofiletop;
+
+$$iniFile = currentmacrodirectory + "\\highlighter.ini";
+#userData = getininum( $$iniFile, "general", "key" );
+
+//////////////////////////////////////////////////////////////////////////////
+// 本処理
+//////////////////////////////////////////////////////////////////////////////
+
+// これまでのデータを消去
+writeinistr $$iniFile, filename2, 0, 0;
+
+##i = 0;
+##ret = true;
+if( ( val( "0x" + getcolormarker( 0x08 ) ) != ##userData ) )
+{
+	nextcolormarker 0x05, ##userData;
+	##ret = result;
+}
+while( ##ret != false )
+{
+	##orgX = column;
+	##orgY = lineno;
+	##chCol = val( "0x" + getcolormarker( 0x01 ) );
+	##bkCol = val( "0x" + getcolormarker( 0x02 ) );
+	##style = val( "0x" + getcolormarker( 0x04 ) );
+	nextcolormarker 0x06, ##userData;
+	##endX = column;
+	##endY = lineno;
+	
+	writeininum $$iniFile, filename2, "ox" + str(##i), ##orgX;
+	writeininum $$iniFile, filename2, "oy" + str(##i), ##orgY;
+	writeininum $$iniFile, filename2, "ex" + str(##i), ##endX;
+	writeininum $$iniFile, filename2, "ey" + str(##i), ##endY;
+	writeininum $$iniFile, filename2, "cc" + str(##i), ##chCol;
+	writeininum $$iniFile, filename2, "bc" + str(##i), ##bkCol;
+	writeininum $$iniFile, filename2, "st" + str(##i), ##style;
+	
+	##i = ##i + 1;
+	
+	title "saving highlighter. " + str(##i), 1;
+	
+	nextcolormarker 0x05, ##userData;
+	##ret = result;
+	
+	if( ##i >= ##max )
+	{
+		// 最大数を超える場合は保存しない
+		message "保存の上限に達しました。\n保存を中止します。";
+		writeinistr $$iniFile, filename2, 0, 0;
+		break;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// 後始末
+//////////////////////////////////////////////////////////////////////////////
+escape;
+moveto ##basePosX, ##basePosY;
+enabledraw;
+redraw;
+
+endmacro;

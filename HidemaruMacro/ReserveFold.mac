@@ -1,0 +1,73 @@
+//------- ReserveFold.mac ------------------------------------------//
+
+//      折りたたみ保存と処理マクロ    Ver.1.02
+
+//                                  2012.6.18   山紫水明
+
+// if( event == 0 ) call ManualExection;
+$inifile = currentmacrodirectory + "\\fold.ini";
+setcompatiblemode 0x0003;
+$file = filename2;
+#x = x; #y = y; //カーソル位置の記憶
+disabledraw;
+gofiletop;
+while( code != eof ) {
+    if( folded ) {
+        #i = #i + 1;
+        writeinistr $inifile, $file, "start" + str(#i), str(lineno);
+        golineend2;
+        right;
+        writeinistr $inifile, $file, "last" + str(#i), str(lineno);
+    }
+    golineend2;
+    right;
+    
+    if( lineno > 2000 )
+    {
+        // 巨大なファイルだと時間がかかるので、強制終了
+        break;
+    }
+    
+    if( !result ) break
+}
+moveto #x, #y;
+//前の痕跡があった場合は消去
+if( #i == 0 ) {
+    writeinistr $inifile, $file, 0, 0;
+    endmacro;
+}
+while( getininum( $inifile, $file, "start" + str(#i + 1) ) > 0 ) {
+    writeinistr $inifile, $file, "start" + str(#i + 1), 0;
+    writeinistr $inifile, $file, "last" + str(#i + 1), 0;
+}
+if( #r == 1 ) message "折りたたみ状態を保存しました。";
+endmacro;
+
+ManualExection:  //手動実行の時の処理
+if( selecting ) $fold = "選択行";
+else $fold = "カーソル行";
+Menubegin:
+mousemenu "&s  折りたたみ保存",
+          "&r  折りたたみ復元",
+          "━━━━━━━━━━━━",
+          "&f  " + $fold + "の折りたたみ",
+          "&d  カーソル行の折りたたみ展開",
+          "&a  折りたたみを全て展開",
+          "&q  中　止";
+#r = result;
+if( #r == 1 ) return;
+else if( #r == 2 ) execmacro "RestoreFold.mac";
+else if( #r == 3 ) goto Menubegin;
+else if( #r == 4 ) {
+    if( selecting ) fold;
+    else {
+        if( foldable ) fold;
+        else {
+            selectline;
+            fold;
+        }
+    }
+} else if( #r == 5 ) unfold;
+else if( #r == 6 ) unfoldall;
+endmacro;
+//------------------------------------------------------------------//

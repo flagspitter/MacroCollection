@@ -1,0 +1,213 @@
+// ローカル変数名と仮引数名に色をつけます。
+
+// 定数
+$keyArgument = "(?\\1)([a-zA-Z0-9_]+)([ \\t]+)?[,\\)\\[]";
+$keyVariable = "(?\\1)[a-zA-Z0-9_]\\*?[ \\t]+\\*?([a-zA-Z0-9_]+)([ \\t]+)?[;=\\[,]";
+#colorArgument = 0x111133;
+#colorVariable = 0x113311;
+#userData = 0xf1e4278f;
+
+main:
+{
+	// 開始時のおまじない
+	setcompatiblemode 0x20f; // 部分編集等を維持、検索結果を選択
+	disabledraw;
+	##orgX = x;
+	##orgY = y;
+	$$searchBuf = searchbuffer;
+	##searchOpt = searchoption;
+	
+	// 主処理
+	call ColorVariable #colorArgument, #colorVariable, #colorGlobal;
+	
+	// 終了時のおまじない
+	moveto ##orgX, ##orgY;
+	rangeeditout;
+	enabledraw;
+	setsearch $$searchBuf, ##searchOpt;
+	
+	endmacro;
+}
+
+//
+// 全関数の仮引数とローカル変数に色をつける
+//  ColorVariable <argument color> <variable color>
+//
+//  void ColorVariable( ##argColor, ##varColor, ##glColor )
+ColorVariable:
+{
+	##argColor = ##1;
+	##varColor = ##2;
+	##glColor  = ##3;
+	
+	// 一番最初の関数に移動する
+	rangeeditout;
+	gofiletop;
+	nextoutlineitem;
+	
+	// 末尾に移動した場合、関数が存在しないと判断
+	if( lineno != linecount2 )
+	{
+		gofiletop;
+		rangeeditin;
+		nextoutlineitem;
+	}
+	
+	##i = 0;
+	// 主処理
+	while( lineno != linecount2 )
+	{
+		// 進捗
+		##i = ##i + 1;
+		##ratio = lineno * 100 / linecount2;
+		title "Coloring " + str(##ratio) + "% completed.", 1;
+		
+		// 一行で完結している関数がある場合に無限ループになってしまう問題の対策
+		// …そんな関数書かないでほしいところだが、
+		// このマクロの対象がそういう汚いコードだったりするわけで。
+		selectline;
+		searchdown "{.*}", regular, inselect;
+		while( ( result == true ) ||
+		       ( colorcode == 0x03 ) ||
+		       ( colorcode == 0x1a ) )
+		{
+			nextoutlineitem;
+			selectline;
+			searchdown "{.*}", regular, inselect;
+		}
+		escape;
+		golinetop;
+		
+		// 色づけ処理へ
+		call ColorLocalFunc ##argColor, ##varColor;
+		nextoutlineitem;
+	}
+	
+	if( foundhilighting )
+	{
+		hilightfound 0;
+	}
+	
+	return;
+}
+
+//
+// 現在の関数の仮引数とローカル変数に色をつける
+//  ColorLocalFunc <argument color> <variable color>
+//
+//  void ColorLocalFunc( ##argColor, ##varColor )
+ColorLocalFunc:
+{
+	##argColor = ##1;
+	##varColor = ##2;
+	
+	///// 仮引数名の色づけ /////////////////////
+	
+	// まず、'{' の位置を確認
+	##tmpY = lineno;
+	searchdown "{";
+	if( ##tmpY == lineno )
+	{
+		// 関数定義部の { が関数名と同じ行にあるため、
+		// prevfuncするとおかしくなるのを回避
+		##tmpX = column;
+		golinetop;
+	}
+	else
+	{
+		##tmpX = column;
+		##tmpY = lineno;
+		prevoutlineitem;
+	}
+	
+	// { まで、引数に該当する文字列を検索
+	searchdown $keyArgument, regular, word, maskifdef, maskcomment, maskstring;
+	##contflag = result;
+	
+	while( ##contflag != false )
+	{
+		// 単語選択で文字列取得
+		selectword;
+		colormarker -1, ##argColor, 2, 0, #userData;
+		$$targetWord = "(?\\1)[^.>](" + gettext( seltopx, seltopy, selendx, selendy ) + ")";
+		wordright;
+		
+		// 単語検索でヒットする限り全てに色づけ
+		call ColorSelected $$targetWord, ##argColor;
+		
+		// ヒットしなくなるか、'{' の位置を越えるまで繰り返し
+		searchdown $keyArgument, regular, word, maskifdef, maskcomment, maskstring;
+		##contflag = result;
+		
+		// 最初に確認した '{' の位置を越えている場合、検索終了
+		if( ( lineno > ##tmpY ) ||
+		    ( ( lineno == ##tmpY ) && ( column >= ##tmpX ) ) )
+		{
+			##contflag = false;
+		}
+	}
+	
+	//// ローカル変数の色づけ //////////////////
+	nextoutlineitem;
+	prevoutlineitem;
+	searchdown "{";
+	
+	// ローカル変数定義に該当する文字列を検索
+	searchdown $keyVariable, regular, maskifdef, maskcomment, maskstring;
+	##contflag = result;
+	
+	while( ##contflag != false )
+	{
+		// 単語選択で文字列取得
+		selectword;
+		colormarker -1, ##varColor, 2, 0, #userData;
+		$$targetWord = "(?\\1)[^.>](" + gettext( seltopx, seltopy, selendx, selendy ) + ")";
+		searchdown "[,;{]", regular, maskifdef, maskcomment, maskstring;
+		
+		// 単語検索でヒットする限り全てに色づけ
+		if( $$targetWord != "" )
+		{
+			call ColorSelected $$targetWord, ##varColor;
+		}
+		
+		// 上記検索がヒットしなくなるまでループ
+		if( code == ',' )
+		{
+			wordright; // １行に複数の宣言がある場合
+		}
+		else
+		{
+			searchdown $keyVariable, regular, maskifdef, maskcomment, maskstring;
+			##contflag = result;
+		}
+	}
+	
+	return;
+}
+
+//
+// 検索可能な範囲内で、指定された文字列に色をつける
+//  ColorSelected <string> <color>
+//
+//  void ColorSelected( $$str, ##ccode )
+ColorSelected:
+{
+	$$str = $$1;
+	##ccode = ##2;
+	
+	##cx = x;
+	##cy = y;
+	
+	searchdown2 $$str, word, maskifdef, maskcomment, maskstring, regular;
+	while( result == true )
+	{
+		colormarker -1, ##ccode, 11, 0, #userData;
+		finddown2;
+	}
+	
+	escape;
+	moveto ##cx, ##cy;
+	
+	return;
+}
+

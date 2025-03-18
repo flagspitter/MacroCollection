@@ -1,0 +1,42 @@
+// 他人のソースのインデントを消すことに異常な執念を燃やす人対策マクロ
+
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+
+gofiletop;
+golineend;
+right;
+while( code != eof )
+{
+	if( code == 0x0d )
+	{
+		left;
+		golinetop;
+		if( ( code == '\t' ) || ( code == ' ' ) )
+		{
+			selectword;
+			$$tmp = gettext( seltopx, seltopy, selendx, selendy );
+			golineend;
+			right;
+			insert $$tmp;
+		}
+		else
+		{
+			golineend;
+			right;
+		}
+	}
+	golineend;
+	right;
+}
+
+moveto ##orgX, ##orgY;
+enabledraw;
+setsearch $$searchBuf, ##searchOpt;
+
+endgroupundo;
+

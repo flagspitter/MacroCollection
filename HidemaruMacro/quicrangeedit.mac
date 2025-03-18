@@ -1,0 +1,44 @@
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+if( rangeeditmode == 0 )
+{
+	selectfoldable;
+	
+	##top = seltopy;
+	##bottom = selendy;
+	
+	moveto 0, ##top;
+	beginsel;
+	moveto 0, ##bottom + 1;
+	
+	rangeeditin;
+	
+	moveto ##orgX, ##orgY;
+}
+else
+{
+	rangeeditout;
+}

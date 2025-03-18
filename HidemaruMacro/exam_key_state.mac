@@ -1,0 +1,26 @@
+newfile;
+message "キー調査を開始します。ESCで終了します。";
+
+call GetKeyState;
+$$prev = $$return;
+
+while(1)
+{
+	call GetKeyState;
+	if( $$prev != $$return ) {
+		insert $$return;
+		insertreturn;
+		$$prev = $$return;
+	}
+}
+
+GetKeyState:
+	$$a = "";
+	##i = 1;
+	while( ##i <= 0x91 ) {
+		if( iskeydown( ##i ) ) {
+			$$a = $$a + str( ##i ) + " ";
+		}
+		##i = ##i + 1;
+	}
+	return $$a;

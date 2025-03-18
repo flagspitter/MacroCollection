@@ -1,0 +1,3 @@
+deletecolormarkerall "mvcol", 0x02;
+hilightfound 0;
+escape;

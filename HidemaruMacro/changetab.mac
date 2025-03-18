@@ -1,0 +1,143 @@
+////////////////////////////////////////////////////////
+//
+// Tab - Space 変換マクロ
+//
+// タブと、指定した個数のスペースを相互変換します。
+//   タブインデント → N個のスペースインデント
+//   N個のスペースインデント → タブインデント
+//
+// タブサイズには依存しませんが、
+// スペースの個数は指定する必要があります。
+// メニューから、TabSize = N のいずれかを選択します。
+//
+// 影響を与えるのは、インデントのみです。
+//
+////////////////////////////////////////////////////////
+
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+
+//////////////////////////////////////////////////////////////////////////////
+// 準備
+//////////////////////////////////////////////////////////////////////////////
+##configTabSize = getconfig( "Tab" );
+$$iniFile = currentmacrodirectory + "\\changetab.ini";
+##size    = getininum( $$iniFile, filename2, "tabsize" );
+
+$$menuItem[0] = "タブに変換(&T)";
+$$menuItem[1] = "スペースに変換(&S)";
+$$menuItem[2] = "\x01";
+$$menuItem[3] = "スペース数 = &2";
+$$menuItem[4] = "スペース数 = &3";
+$$menuItem[5] = "スペース数 = &4";
+$$menuItem[6] = "スペース数 = &8";
+
+if( ##size == 2 )
+{
+	##i = 3;
+}
+else if( ##size == 3 )
+{
+	##i = 4;
+}
+else if( ##size == 4 )
+{
+	##i = 5;
+}
+else if( ##size == 8 )
+{
+	##i = 6;
+}
+else
+{
+	##i = 5;
+	##size = 4;
+}
+
+$$menuItem[ ##i ] = $$menuItem[ ##i ] + " 【現在の設定】";
+
+menuarray $$menuItem, 7;
+
+##pos = result;
+
+//////////////////////////////////////////////////////////////////////////////
+// 変換
+//////////////////////////////////////////////////////////////////////////////
+disabledraw;
+begingroupundo;
+##orgX = x;
+##orgY = y;
+
+if( ##pos == 1 )
+{
+	// N個のスペースによるインデント → タブ
+	config "xTab:" + str(##size);
+	selectall;
+	tospace;
+	selectall;
+	execmacro "avd_totab.mac";
+	config "xTab:" + str(##configTabSize);
+	escape;
+}
+else if( ##pos == 2 )
+{
+	// タブ → N個のスペースによるインデント
+	config "xTab:" + str(##size);
+	selectall;
+	tospace;
+	config "xTab:" + str(##configTabSize);
+	escape;
+}
+else if( ##pos == 4 )
+{
+	// 設定の変更： N = 2
+	##size = 2;
+	writeininum $$iniFile, filename2, "tabsize", ##size;
+}
+else if( ##pos == 5 )
+{
+	// 設定の変更： N = 3
+	##size = 3;
+	writeininum $$iniFile, filename2, "tabsize", ##size;
+}
+else if( ##pos == 6 )
+{
+	// 設定の変更： N = 4
+	// 4 をデフォルトとするので、その場合を消去
+	writeinistr $$iniFile, filename2, 0, 0;
+}
+else if( ##pos == 7 )
+{
+	// 設定の変更： N = 8
+	##size = 8;
+	writeininum $$iniFile, filename2, "tabsize", ##size;
+}
+else
+{
+	; // error
+}
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+endgroupundo;
+enabledraw;
+endmacro;
+

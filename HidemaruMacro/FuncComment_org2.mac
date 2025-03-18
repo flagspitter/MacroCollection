@@ -1,0 +1,109 @@
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// 関数名を抜き出す
+golinetop;
+searchdown( "(" );
+// left 2;
+wordleft;
+selectword;
+$$funcName = gettext( seltopx, seltopy, selendx, selendy );
+
+// 引数を抜き出す
+searchdown( "(" );
+right;
+##curCode = code;
+##argNum = 0;
+while( ##curCode != ')' )
+{
+	while( code == ' ' )
+	{
+		right;
+	}
+	##varX0 = x;
+	##varY0 = y;
+	
+	searchdown2 "[,\\)]", regular;
+	##curCode = code;
+	
+	left;
+	$$arg[ ##argNum ] = gettext( ##varX0, ##varY0, x, y );
+	right;
+	##argNum = ##argNum + 1;
+}
+
+// インデントを取得
+golinetop;
+if( ( code == ' ' ) || ( code == '\t' ) )
+{
+	selectword;
+	$$indent = gettext( seltopx, seltopy, selendx, selendy );
+}
+
+escape;
+golinetop;
+insert "\n";
+up;
+insert $$indent + "/***************************************************************\n";
+insert $$indent + "\tName        " + $$funcName + "\n";
+
+if(0)
+{
+	insert $$indent + "\tParams      ";
+	
+	if( ##argNum == 0 )
+	{
+		insert "None\n";
+	}
+	else
+	{
+		insert $$arg[ 0 ] + " \n";
+		
+		##i = 1;
+		while( ##i < ##argNum )
+		{
+			insert $$indent + "\t            " + $$arg[ ##i ] + "\n";
+			##i = ##i + 1;
+		}
+	}
+	
+	insert $$indent + "\tRetCode     \n";
+	insert $$indent + "\t\n";
+}
+insert $$indent + "\tPurpose     \n";
+insert $$indent + "***************************************************************/";
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+golinetop;
+down 2;
+wordright;
+wordright;
+enabledraw;
+
+endgroupundo;
+endmacro;
+////////////////////////////////////////

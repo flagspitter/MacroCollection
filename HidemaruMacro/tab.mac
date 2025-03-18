@@ -1,0 +1,14 @@
+setcompatiblemode 0x0F;
+
+if(rectselecting)
+{
+	insert "\t";
+}
+else if(selecting)
+{
+	filter "Indent2.hmf" , "Indent2";
+}
+else
+{
+	insert "\t";
+}

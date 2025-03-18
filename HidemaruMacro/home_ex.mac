@@ -1,0 +1,6 @@
+golinetop;
+if( ( code == ' ' ) || ( code == '\t' ) )
+{
+	selectword;
+	right;
+}

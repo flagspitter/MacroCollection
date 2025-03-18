@@ -1,0 +1,177 @@
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+
+call indentall "{|#if|#else|#elif", "}|#else|#endif|#elif", "case|default:";
+// call indentall "Begin|If|Then|While|Private Function|Private Sub|Private Procedure|Public Function|Public Sub|Public Procedure|For", "End|Wend|Next", "ElseIf|Else";
+
+moveto ##orgX, ##orgY;
+enabledraw;
+setsearch $$searchBuf, ##searchOpt;
+endgroupundo;
+endmacro;
+
+
+indentall:
+{
+	// パラメータを確認
+	if( ($$1 == "") || ($$2 == "") )
+	{
+		return 0;
+	}
+	
+	$$strOpen  = $$1;
+	$$strClose = $$2;
+	
+	// // 一度、全てのインデントを消去
+	// replaceallfast "^(\\t| )+", "" , regular;
+	gofiletop;
+	
+	// 再インデントを行う
+	##cntIndent = 0;
+	while( lineno < linecount2 )
+	{
+		##adjust = 0;
+		
+		// タグの検出
+		// $$curStr = gettext2( 0, lineno, linelen2, lineno );
+		// ##posOpen  = strstr( $$curStr, $$strOpen );
+		// ##posClose = strstr( $$curStr, $$strClose );
+		
+		// 3:コメント 20:文字列 26:#if 0
+		//if( ##posOpen != -1 )
+		//{
+		//	movetolineno ##posOpen,lineno;
+		//	##ccode = colorcode & 0xf;
+		//	if( ( ##ccode == 3 ) || ( ##ccode == 20 ) || ( ##ccode == 26 ) )
+		//	{
+		//		##posOpen = -1;
+		//	}
+		//}
+		//
+		//if( ##posClose != -1 )
+		//{
+		//	movetolineno ##posClose,lineno;
+		//	##ccode = colorcode & 0xf;
+		//	if( ( ##ccode == 3 ) || ( ##ccode == 20 ) || ( ##ccode == 26 ) )
+		//	{
+		//		##posClose = -1;
+		//	}
+		//}
+		
+		##posOpen  = 0;
+		##posClose = 0;
+		selectline;
+		searchdown2 $$strOpen, word, maskcomment, maskifdef, maskstring, inselect, nohilight, regular;
+		if( result == false )
+		{
+			##posOpen = -1;
+		}
+		
+		selectline;
+		searchdown2 $$strClose, word, maskcomment, maskifdef, maskstring, inselect, nohilight, regular;
+		if( result == false )
+		{
+			##posClose = -1;
+		}
+		
+		// 検出状態の解析
+		if( (##posOpen != -1) && (##posClose != -1) )
+		{
+			##adjust = 1; // １行で完結している
+		}
+		else if( ##posOpen != -1 )
+		{
+			// 開いている
+			##cntIndent = ##cntIndent + 1;
+			##adjust = 1;
+		}
+		else if( ##posClose != -1 )
+		{
+			// 閉じている
+			##cntIndent = ##cntIndent - 1;
+			if( ##cntIndent < 0 )
+			{
+				// 対応しない閉じタグを検出 -> -1 を返す
+				break;
+			}
+		}
+		else
+		{
+			; // タグがない行
+		}
+		
+		if( $$3 != "" )
+		{
+			selectline;
+			searchdown2 $$3, word, maskcomment, maskifdef, maskstring, inselect, nohilight, regular;
+			if( result == true )
+			{
+				##adjust = ##adjust + 1;
+			}
+		}
+		
+		golinetop;
+		// if( code == '\t' )
+		// {
+		// 	selectword;
+		// 	##cntTab = selendcolumn - seltopcolumn;
+		// 	escape;
+		// 	golinetop;
+		// }
+		// else
+		// {
+		// 	##cntTab = 0;
+		// }
+		##cntTab = 0;
+		while( code == '\t' )
+		{
+			right;
+			##cntTab = ##cntTab + 1;
+		}
+		golinetop;
+		
+		##i = ##adjust + ##cntTab;
+		if( ##i < ##cntIndent )
+		{
+			while( ##i < ##cntIndent )
+			{
+				insert "\t";
+				// message( "i=" + str(##i) + ", cndIndent=" + str(##cntIndent) + ", cndTab=" + str(##cntTab) + ", adjust=" + str(##adjust) );
+				##i = ##i + 1;
+			}
+		}
+		else
+		{
+			while( ##i > ##cntIndent )
+			{
+				if( code == '\t' )
+				{
+					delete;
+				}
+				##i = ##i - 1;
+			}
+		}
+		
+		// インデントを行う
+		// ##i = ##adjust;
+		// golinetop;
+		// while( ##i < ##cntIndent )
+		// {
+		// 	insert "\t";
+		// 	##i = ##i + 1;
+		// }
+		
+		golineend2;
+		right;
+	}
+	
+	searchdown "dummy";
+	escape;
+	
+	return ##cntIndent;
+}
+

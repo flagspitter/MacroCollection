@@ -1,0 +1,271 @@
+////////////////////////////////////////////////////////
+// 井出丸【秀丸でIDEっぽい動きを】本開発前のテスト版
+// idemaru_typeview.mac ... 変数の型とかを表示する
+////////////////////////////////////////////////////////
+
+////////////////////////////////////////
+// setcompatiblemode メモ
+// 0x00003 ... 折りたたみ [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x0000c ... 部分編集   [0]標準 [1]解除 [2]なるべく維持 [3]維持
+// 0x00070 ... 排他制御   [0]標準 [1]問い合わせ [2]禁止 [3]ジャンプ [4]リロード [5]強制
+// 0x00300 ... 検索       [0]標準 [1]点滅 [2]範囲選択
+// 0x03000 ... 貼り付け後カーソル [0]標準 [1]先頭へ [2]最後へ
+// 0x20000 ... 検索条件を元に戻す
+
+// V8.20より古い版での検索条件復帰
+//  $$searchBuf = searchbuffer;
+//  ##searchOpt = searchoption;
+//  ...
+//  setsearch $$searchBuf, ##searchOpt;
+// 
+
+////////////////////////////////////////
+// preprocess
+setcompatiblemode 0x2020c;
+##orgX = x;
+##orgY = y;
+disabledraw;
+begingroupundo;
+////////////////////////////////////////
+
+// TODO ここに記述
+
+##dllID = loaddll( macrodir + "\\idemaru.dll" );
+if( !result )
+{
+	message "failed.";
+}
+else if( dllfunc( ##dllID, "CloseQuickInfo", 0 ) )
+{
+	// トグル動作にする
+	// ※CloseQuickInfoでは、窓を閉じた場合に非0を返す
+	##dllID = loaddll( macrodir + "\\forcefreelib.dll" );
+	##tmp = dllfunc( ##dllID, "FreeLibraryForced", macrodir + "\\idemaru.dll" );
+	freedll( ##dllID );
+}
+else
+{
+	if( !selecting )
+	{
+		selectword;
+	}
+	$$str = gettext( seltopx, seltopy, selendx, selendy );
+	
+	if( $$str != "" )
+	{
+		call EncodeRegular $$str;
+		$$str = $$return;
+		call SearchDeclaration $$str;
+		$$str = $$return;
+	}
+	
+	if( $$str == "" )
+	{
+		$$str = "(´・ω・)宣言とか定義が見つからないのです…";
+		##bkCol = 0xa0a0ff;            // 背景色
+		##time  = 3000;                // 自動消滅までの時間[ms] (-1で永続)
+	}
+	else
+	{
+		##bkCol = 0xc0ffff;            // 背景色
+		##time  = -1;                  // 自動消滅までの時間[ms] (-1で永続)
+		
+		// $$str = "(" + str(lineno) + ") " + $$str;
+	}
+	
+	##fnCol = 0x000000;            // 文字色
+	##hWnd  = hidemaruhandle( 0 ); // 定型
+	##posX  = xpixel + 4;          // 表示位置 x
+	##posY  = ypixel + fontsize + 2;   // 表示位置 y
+	
+	// すでに表示中の場合、強制消去
+	// ##tmp = dllfunc( ##dllID, "CloseQuickInfo", 0 );
+	
+	// 表示する
+	##tmp = dllfunc( ##dllID, "OpenQuickInfo", 0, 3, ##posX, ##posY,
+	            $$str, fontname, fontsize, ##fnCol, ##bkCol, ##time, ##hWnd );
+	
+	// freeすると、即座に消滅してしまう
+	//freedll( ##dllID );
+}
+
+////////////////////////////////////////
+// postprocess
+moveto ##orgX, ##orgY;
+enabledraw;
+
+endgroupundo;
+endmacro;
+////////////////////////////////////////
+
+// 正規表現的にまずい文字をエスケープする
+EncodeRegular:
+	$$ret = "";
+	##i = 0;
+	while( ##i < strlen( $$1 ) )
+	{
+		$$tmp = midstr( $$1, ##i, 1 );
+		if( strstr( "[]()^$.*+?|\\\"{}", $$tmp ) != -1 )
+		{
+			$$ret = $$ret + "\\";
+		}
+		$$ret = $$ret + $$tmp;
+		##i = ##i + 1;
+	}
+	return $$ret;
+
+SearchDeclaration:
+	if( ( filetype == ".c" ) || ( filetype == ".cpp" ) || ( filetype == ".h" ) || ( filetype == ".cs" ) || ( filetype == ".v" ) )
+	{
+		call SearchDeclaration_C $$1;
+		$$ret = $$return;
+	}
+	if( ( filetype == ".bas" ) || ( filetype == ".cls" ) )
+	{
+		call SearchDeclaration_VB $$1;
+		$$ret = $$return;
+	}
+	
+	return $$ret;
+
+SearchDeclaration_C:
+	// TODO スコープを解決できるようにする
+	// TODO 関数・変数・仮引数を別に制御できるようにする → color_var.mac を流用できる
+	// TODO プロジェクトファイルなどを参照して、
+	//      他のファイルからも引っ張ってこれるように
+	// TODO メンバの場合、構造体・共用体名も参照できるようにする
+	// searchup "(?\\1)^[ \\t]*([a-zA-Z0-9_]+[ \\ta-zA-Z0-9_\\[\\],=*:]+" + $$1 + ".+)", regular, masknormal, maskonly, nohilight;
+	// 後期 searchup "(?\\1)^[ \\t]*(([a-zA-Z0-9_\\[\\].=*:]+[ \\t]*)+" + $$1 + ".*;)", regular, masknormal, maskonly, nohilight;
+	
+	##orgX = x;
+	##orgY = y;
+	disableerrormsg;
+	
+	{
+		//// Local scope
+		prevoutlineitem;
+		searchdown "{";
+		beginsel;
+		gorightkakko;
+		rangeeditin;
+		gofiletop;
+		searchdown "(?\\1)^[ \\t]*(((private|public|protected|const|volatile|static|struct|union|unsigned|signed)[ \\t]+)*"
+		            + "([a-zA-Z0-9_*&]+)[ \\t]+[*&]?"
+		            + $$1 + "[ \\t\\[{}='\"a-zA-Z0-1_\\\\]*[;,])",
+		            regular, masknormal, maskstring, maskonly, nohilight;
+		##searchResult = result;
+		rangeeditout;
+		$$tmp = "(Local " + str(lineno) + ")  ";
+	}
+	if( ##searchResult == false )
+	{
+		//// Argument
+		prevoutlineitem;
+		beginsel;
+		searchdown "{";
+		rangeeditin;
+		gofiletop;
+		searchdown "(?\\1)(((private|public|protected|const|volatile|static|struct|union|unsigned|signed)[ \\t]+)*"
+		            + "([a-zA-Z0-9_*&]+)[ \\t]+[*&]?"
+		            + $$1 + ")(\\[.*\\])?[ \\t,)]", regular, masknormal, maskonly, nohilight;
+		##searchResult = result;
+		rangeeditout;
+		$$tmp = "(Argument " + str(lineno) + ")  ";
+	}
+	if( ##searchResult == false )
+	{
+		//// global variables
+		gofiletop;
+		searchdown "(?\\1)^[ \\t]*(((private|public|protected|const|volatile|static|struct|union|unsigned|signed)[ \\t]+)*"
+		            + "([a-zA-Z0-9_*&]+)[ \\t]+[*&]?"
+		            + $$1 + "[ \\t\\[{}='\"a-zA-Z0-1_\\\\]*[;,])",
+		            regular, masknormal, maskstring, maskonly, nohilight;
+		##searchResult = result;
+		$$tmp = "(Global " + str(lineno) + ")  ";
+	}
+	if( ##searchResult == false )
+	{
+		//// Definition
+		gofiletop;
+		searchdown "(?\\1)^[ \\t]*(#define[ \\t]+" + $$1 + ".*)",
+		           regular, masknormal, maskstring, maskonly, nohilight;
+		##searchResult = result;
+		$$tmp = "(" + str(lineno) + ")  ";
+	}
+	
+	if( ##searchResult == false )
+	{
+		// 見つからない
+		$$tmp = "";
+	}
+	else
+	{
+		$$tmp = $$tmp + gettext( seltopx, seltopy, selendx, selendy );
+	}
+	
+	// 方法としては、
+	// ・このサブルーチンのように、マクロ内で検索
+	// ・tagsファイルを参照→これだと不整合が気になることと、変数対応が不十分
+	// ・dll内で検索
+	
+	enableerrormsg;
+	
+	return $$tmp;
+
+SearchDeclaration_VB:
+	##orgX = x;
+	##orgY = y;
+	disableerrormsg;
+	
+	// for VBA - 1
+	{
+		moveto ##orgX, ##orgY;
+		rangeeditin;
+		searchup "(?\\1)^[ \\t]*((dim|public|private)[ \\t]+" + $$1 + "[ a-zA-Z0-9_\\t]*)",
+		         regular, masknormal, maskstring, maskonly, nohilight, nocasesense;
+		##searchResult = result;
+		rangeeditout;
+		$$tmp = "(Local " + str(lineno) + ")  ";
+	}
+	// for VBA - 2
+	if( ##searchResult == false )
+	{
+		gofiletop;
+		searchdown "(?\\1)^[ \\t]*((dim|public|private)[ \\t]+" + $$1 + "[ a-zA-Z0-9_\\t]*)",
+		           regular, masknormal, maskstring, maskonly, nohilight, nocasesense;
+		##searchResult = result;
+		$$tmp = "(Global " + str(lineno) + ")  ";
+	}
+	// for VBA - 3
+	if( ##searchResult == false )
+	{
+		moveto ##orgX, ##orgY;
+		searchup "(?\\1)^[ \\t]*(" + $$1 + "[ \\t]+As[ a-zA-Z0-9_\\t]+)",
+		         regular, masknormal, maskstring, maskonly, nohilight, nocasesense;
+		##searchResult = result;
+		$$tmp = "(Member " + str(lineno) + ")  ";
+	}
+	// for VBA - 4
+	if( ##searchResult == false )
+	{
+		enableerrormsg;
+		moveto ##orgX, ##orgY;
+		searchup "(?\\1)\\(.*(" + $$1 + "[ \\t]+As[ \\t]+.+)[, \\t)]",
+		         regular, masknormal, maskstring, maskonly, nohilight, nocasesense;
+		##searchResult = result;
+		$$tmp = "(Argument " + str(lineno) + ")  ";
+	}
+	
+	if( ##searchResult == false )
+	{
+		// 見つからない
+		$$tmp = "";
+	}
+	else
+	{
+		$$tmp = $$tmp + gettext( seltopx, seltopy, selendx, selendy );
+	}
+	
+	enableerrormsg;
+	
+	return $$tmp;

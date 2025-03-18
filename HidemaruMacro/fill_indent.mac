@@ -1,0 +1,33 @@
+setcompatiblemode 0x000c;
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##cx = x;
+##cy = y;
+##mode = 1;
+##colorBase = 0x000000;
+##colorDif  = 0x100a0a;
+$$curTab = "";
+
+disabledraw;
+escape;
+
+##ccode = ##colorBase;
+
+gofiletop;
+searchdown2 "(?\\1)^" + $$curTab + "(\\t)", regular;
+while( result == true )
+{
+	while( result == true )
+	{
+		colormarker -1, ##ccode, 11, ##mode, 1;
+		finddown2;
+	}
+	##ccode = (##ccode + ##colorDif) & 0x00ffffff;
+	$$curTab = $$curTab + "\\t";
+	gofiletop;
+	searchdown2 "(?\\1)^" + $$curTab + "(\\t)", regular;
+}
+
+escape;
+moveto ##cx, ##cy;
+setsearch $$searchBuf, ##searchOpt;

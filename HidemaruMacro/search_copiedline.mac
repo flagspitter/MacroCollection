@@ -1,0 +1,21 @@
+disabledraw;
+
+escape;
+selectline;
+$a = gettext( seltopx, seltopy, selendx, selendy );
+golineend2;
+right;
+selectline;
+$b = gettext( seltopx, seltopy, selendx, selendy );
+
+while( $a != $b )
+{
+	escape;
+	$a = $b;
+	golineend2;
+	right;
+	selectline;
+	$b = gettext( seltopx, seltopy, selendx, selendy );
+}
+
+enabledraw;

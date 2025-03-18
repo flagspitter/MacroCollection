@@ -1,0 +1,69 @@
+// 行末の整理
+// 
+// 複数行を範囲選択して実行すると、
+// 改行コードの位置をあわせるようにスペースを埋めます。
+// 選択した範囲は、全て同一のインデントである必要があります。
+
+// (例)
+//setcompatiblemode 0x020c;
+//begingroupundo;
+//disabledraw;
+//  ↓
+//setcompatiblemode 0x020c;
+//begingroupundo;          
+//disabledraw;             
+
+setcompatiblemode 0x020c;
+begingroupundo;
+disabledraw;
+$$searchBuf = searchbuffer;
+##searchOpt = searchoption;
+##orgX = x;
+##orgY = y;
+
+if( rectselecting )
+{
+	; // error
+}
+else if( selecting )
+{
+	##topY = seltoplineno;
+	##bottomY = selendlineno;
+	if( selendcolumn != 0 )
+	{
+		##bottomY = ##bottomY + 1;
+	}
+	
+	// 最大桁数を得る
+	##max = 0;
+	moveto2 0, ##topY;
+	while( ( lineno < ##bottomY ) && ( code != eof ) )
+	{
+		golineend2;
+		if( column > ##max )
+		{
+			##max = column;
+		}
+		right;
+	}
+	
+	// 空白を敷き詰める
+	moveto2 0, ##topY;
+	while( ( lineno < ##bottomY ) && ( code != eof ) )
+	{
+		golineend2;
+		while( column < ##max )
+		{
+			insert " ";
+		}
+		insert " ";
+		right;
+	}
+	escape;
+}
+
+moveto ##orgX, ##orgY;
+enabledraw;
+setsearch $$searchBuf, ##searchOpt;
+endgroupundo;
+

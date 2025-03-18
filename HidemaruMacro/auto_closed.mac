@@ -1,0 +1,7 @@
+// Always
+if( filetype != ".cs" )
+{
+	execmacro "ReserveFold.mac";
+}
+
+endmacro;

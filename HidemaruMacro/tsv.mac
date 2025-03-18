@@ -1,0 +1,14 @@
+#mode = getconfig("TabMode");
+
+if( #mode & 0x0100 )
+{
+	config "xTabMode:0x0000";
+}
+else if( #mode & 0x0001 )
+{
+	config "xTabMode:0x0101";
+}
+else
+{
+	config "xTabMode:0x0001";
+}

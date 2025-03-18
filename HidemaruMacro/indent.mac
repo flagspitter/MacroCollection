@@ -1,0 +1,84 @@
+if(rectselecting)
+{
+	////////////////////////////////////////
+	// preprocess
+	setcompatiblemode 0x2020c;
+	// $$searchBuf = searchbuffer;
+	// ##searchOpt = searchoption;
+	begingroupundo;
+	disabledraw;
+	////////////////////////////////////////
+	
+	##topY    = seltoplineno;
+	##bottomY = selendlineno;
+	##topX    = seltopcolumn;
+	##bottomX = selendcolumn;
+	
+	##i = ##topY;
+	while( ##i <= ##bottomY )
+	{
+		moveto2 ##topX, ##i;
+		if( ##topX <= linelen2 )
+		{
+			insert "\t";
+		}
+		##i = ##i + 1;
+	}
+	
+	moveto2 ##topX + 1, ##topY;
+	beginrect;
+	moveto2 ##bottomX + 1, ##bottomY;
+	
+	////////////////////////////////////////
+	// postprocess
+	// setsearch $$searchBuf, ##searchOpt;
+	enabledraw;
+	endgroupundo;
+	////////////////////////////////////////
+}
+else if( selecting )
+{
+	////////////////////////////////////////
+	// preprocess
+	setcompatiblemode 0x2020c;
+	// $$searchBuf = searchbuffer;
+	// ##searchOpt = searchoption;
+	begingroupundo;
+	disabledraw;
+	////////////////////////////////////////
+	
+	##topY    = seltoplineno;
+	##bottomY = selendlineno;
+	##topX    = seltopcolumn;
+	##bottomX = selendcolumn;
+	
+	##topIndent = ##topY;
+	if( ##bottomX != 0 )
+	{
+		##bottomIndent = ##bottomY + 1;
+	}
+	else
+	{
+		##bottomIndent = ##bottomY;
+	}
+	
+	indent;
+	replaceallfast "^$", "\\t", regular, inselect;
+	escapeinselect;
+	
+	moveto2 0, ##topY;
+	beginlinesel;
+	moveto2 0, ##bottomIndent;
+	endsel;
+	
+	////////////////////////////////////////
+	// postprocess
+	// setsearch $$searchBuf, ##searchOpt;
+	enabledraw;
+	endgroupundo;
+	////////////////////////////////////////
+}
+else
+{
+	tab;
+}

@@ -1,0 +1,63 @@
+// 拡張版「Space - Tab変換」
+// ・矩形選択時の場合・・・その範囲を変換します。
+// ・通常選択時の場合・・・行頭のスペースのみをTabに変換します。
+// ・非選択時の場合・・・・何もしません
+
+disabledraw;
+begingroupundo;
+##orgX = x;
+##orgY = y;
+
+##tmp_x0 = seltopx;
+##tmp_y0 = seltopy;
+##tmp_x1 = selendx;
+##tmp_y1 = selendy;
+
+##i = ##tmp_y0;
+
+if( rectselecting )
+{
+	// 矩形選択時・・・その範囲を強引に変換
+	while( ##i <= ##tmp_y1 )
+	{
+		moveto ##tmp_x0, ##i;
+		beginsel;
+		moveto ##tmp_x1, ##i;
+		totab;
+		##i = ##i + 1;
+	}
+}
+else if( selecting )
+{
+	// 通常選択時
+	// １文字でも選択されている行に対して、
+	// 行頭のスペースのみをTabに変換
+	while( ##i <= ##tmp_y1 )
+	{
+		moveto 0, ##i;
+		if( code != ' ' )
+		{
+			; // no conversion
+		}
+		else
+		{
+			// Space exists on head of line.
+			beginsel;
+			while( code == ' ' )
+			{
+				right;
+			}
+			totab;
+			escape;
+		}
+		##i = ##i + 1;
+	}
+}
+else
+{
+	; // do nothing
+}
+
+moveto ##orgX, ##orgY;
+endgroupundo;
+enabledraw;
